@@ -254,7 +254,7 @@ static void OLED_ShowStatus(void){
 
     // DIFF
     oled_print_text(0, 6, "DIFF");
-    oled_print_uint(6*4, 6, g_difficulty);
+    oled_print_uint(6*6, 6, g_difficulty);
 
     // STATE (บรรทัดล่างสุด)
     switch(g_game_state){

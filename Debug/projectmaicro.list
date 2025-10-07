@@ -1094,12 +1094,12 @@ static void OLED_ShowStatus(void){
  8000946:	2106      	movs	r1, #6
  8000948:	2000      	movs	r0, #0
  800094a:	f7ff ff55 	bl	80007f8 <oled_print_text>
-    oled_print_uint(6*4, 6, g_difficulty);
+    oled_print_uint(6*6, 6, g_difficulty);
  800094e:	4b28      	ldr	r3, [pc, #160]	@ (80009f0 <OLED_ShowStatus+0xfc>)
  8000950:	781b      	ldrb	r3, [r3, #0]
  8000952:	461a      	mov	r2, r3
  8000954:	2106      	movs	r1, #6
- 8000956:	2018      	movs	r0, #24
+ 8000956:	2024      	movs	r0, #36	@ 0x24
  8000958:	f7ff ff7a 	bl	8000850 <oled_print_uint>
 
     // STATE (บรรทัดล่างสุด)
