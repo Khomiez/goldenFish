@@ -376,6 +376,23 @@ static void handle_level_intro(void) {
     Log_Print("Level %u. Lives: %u. Score: %lu\r\n", g_level, g_lives, g_score);
     OLED_ShowStatus();
     Delay_ms(800);
+
+    // Back-and-forth LED animation only for first level
+    if (g_level == 1) {
+        // Forward: LED0 -> LED1 -> LED2 -> LED3
+        for (int i = 0; i < 4; i++) {
+            show_led(i);
+            Delay_ms(150);
+        }
+        // Backward: LED3 -> LED2 -> LED1 -> LED0
+        for (int i = 2; i >= 0; i--) {
+            show_led(i);
+            Delay_ms(150);
+        }
+        clear_leds();
+        Delay_ms(200);
+    }
+
     generate_pattern(g_level + g_difficulty - 1);
     g_pattern_index = 0;
     set_game_state(GAME_STATE_PATTERN_DISPLAY);
