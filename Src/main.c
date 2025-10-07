@@ -105,6 +105,21 @@ uint8_t g_input_correct = 1;
 
 GameState_t g_last_state_logged = (GameState_t)-1;
 
+// --- DIFF → ความเร็วกระพริบ (ยิ่ง DIFF สูงยิ่งเร็ว) ---
+static inline uint8_t clamp_u8(uint8_t v, uint8_t lo, uint8_t hi){
+    return v < lo ? lo : (v > hi ? hi : v);
+}
+static uint16_t diff_on_ms(uint8_t diff){
+    static const uint16_t T[5] = {500, 400, 300, 220, 150}; // DIFF 1..5
+    diff = clamp_u8(diff,1,5);
+    return T[diff-1];
+}
+static uint16_t diff_off_ms(uint8_t diff){
+    static const uint16_t T[5] = {250, 200, 150, 110, 80};  // DIFF 1..5
+    diff = clamp_u8(diff,1,5);
+    return T[diff-1];
+}
+
 /* ============================================================================
  * OLED (SH1106/SSD1306 over I2C1 PB8=SCL, PB9=SDA)
  * ============================================================================ */
@@ -221,8 +236,10 @@ static void oled_print_uint(uint8_t x,uint8_t page,unsigned v){
 }
 
 /* แสดงสถานะเกมบน OLED */
+
 static void OLED_ShowStatus(void){
     oled_clear();
+
     // LEVEL
     oled_print_text(0, 0, "LEVEL");
     oled_print_uint(6*6, 0, g_level);
@@ -235,14 +252,18 @@ static void OLED_ShowStatus(void){
     oled_print_text(0, 4, "SCORE");
     oled_print_uint(6*6, 4, g_score);
 
-    // STATE
+    // DIFF
+    oled_print_text(0, 6, "DIFF");
+    oled_print_uint(6*4, 6, g_difficulty);
+
+    // STATE (บรรทัดล่างสุด)
     switch(g_game_state){
-        case GAME_STATE_VICTORY:      oled_print_text(0, 6, "VICTORY"); break;
-        case GAME_STATE_GAME_DEATH:   oled_print_text(0, 6, "GAME-OVER"); break;
-        case GAME_STATE_PATTERN_DISPLAY: oled_print_text(0, 6, "SHOW"); break;
-        case GAME_STATE_INPUT_WAIT:   oled_print_text(0, 6, "INPUT"); break;
-        case GAME_STATE_DIFFICULTY_SELECT: oled_print_text(0,6,"DIFF"); break;
-        default:                      oled_print_text(0, 6, "PLAY"); break;
+        case GAME_STATE_VICTORY:            oled_print_text(0, 7, "VICTORY"); break;
+        case GAME_STATE_GAME_DEATH:         oled_print_text(0, 7, "GAME-OVER"); break;
+        case GAME_STATE_PATTERN_DISPLAY:    oled_print_text(0, 7, "SHOW"); break;
+        case GAME_STATE_INPUT_WAIT:         oled_print_text(0, 7, "INPUT"); break;
+        case GAME_STATE_DIFFICULTY_SELECT:  oled_print_text(0, 7, "DIFF-SEL"); break;
+        default:                            oled_print_text(0, 7, "PLAY"); break;
     }
 }
 
@@ -399,9 +420,15 @@ static void handle_level_intro(void) {
 }
 
 static void handle_pattern_display(void) {
+    // เวลาเปิด/ปิด LED ตามความยาก
+    uint16_t t_on  = diff_on_ms(g_difficulty);
+    uint16_t t_off = diff_off_ms(g_difficulty);
+
     if (g_pattern_index < g_pattern_length) {
-        show_led(g_pattern[g_pattern_index]); Delay_ms(500);
-        clear_leds();                          Delay_ms(250);
+        show_led(g_pattern[g_pattern_index]);
+        Delay_ms(t_on);
+        clear_leds();
+        Delay_ms(t_off);
         g_pattern_index++;
     } else {
         g_pattern_index = 0;
@@ -415,8 +442,12 @@ static void handle_input_wait(void) {
     if (g_input_index < g_pattern_length) {
         for (int i = 0; i < 4; i++) {
             if (g_buttons[i].current_state == 1 && g_buttons[i].previous_state == 0) {
-                show_led(i); Delay_ms(200); clear_leds();
-                if (i != g_pattern[g_input_index]) g_input_correct = 0;
+                show_led(i);
+                Delay_ms(diff_on_ms(g_difficulty) / 2); // feedback เร็วตาม DIFF
+                clear_leds();
+                if (i != g_pattern[g_input_index]) {
+                    g_input_correct = 0;
+                }
                 g_input_index++;
                 break;
             }
@@ -431,7 +462,7 @@ static void handle_result_process(void) {
         g_score += 10 * g_level * g_difficulty;
         g_level++;
         OLED_ShowStatus();
-        if (g_level > 5) set_game_state(GAME_STATE_VICTORY);
+        if (g_level > 9) set_game_state(GAME_STATE_VICTORY);
         else             set_game_state(GAME_STATE_LEVEL_INTRO);
     } else {
         if (g_lives > 0) g_lives--;
@@ -511,10 +542,9 @@ static void handle_difficulty_select(void) {
     static uint8_t last_difficulty = 0;
 
     if (!g_difficulty_locked) {
-        uint16_t pot_value = g_adc_values[0]; // 0..1023
-        // map เป็น 1..5 (แบ่งเท่า ๆ กัน)
-        g_difficulty = (uint32_t)(pot_value * 5) / 1024 + 1;
-        SevenSeg_Display(g_difficulty);
+    	uint16_t pot_value = g_adc_values[0];
+    	g_difficulty = (uint32_t)(pot_value * 5) / 1024 + 1;  // 1..5
+    	SevenSeg_Display(g_difficulty);
 
         if (g_difficulty != last_difficulty || (current_time - last_log_time) > 1000) {
             Log_Print("[DIFFICULTY] Pot:%u -> Diff:%u\r\n", pot_value, g_difficulty);
