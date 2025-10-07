@@ -414,7 +414,7 @@ static void handle_level_intro(void) {
         Delay_ms(200);
     }
 
-    generate_pattern(g_level + g_difficulty - 1);
+    generate_pattern(g_level);
     g_pattern_index = 0;
     set_game_state(GAME_STATE_PATTERN_DISPLAY);
 }
