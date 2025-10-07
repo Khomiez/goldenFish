@@ -454,11 +454,41 @@ static void handle_victory(void) {
 }
 
 static void handle_game_death(void) {
-    Log_Print("Game Over! Final Score: %lu\r\n", g_score);
-    OLED_ShowStatus();
+    static uint8_t animation_played = 0;
+
+    // Play game over animation once upon entering this state
+    if (!animation_played) {
+        Log_Print("Game Over! Final Score: %lu\r\n", g_score);
+
+        // Rapid blink: 3 cycles
+        for (int cycle = 0; cycle < 3; cycle++) {
+            LED_SetPattern(0x0F);  // All LEDs on
+            Delay_ms(150);
+            LED_SetPattern(0x00);  // All LEDs off
+            Delay_ms(150);
+        }
+
+        // Gradual fade out simulation (since STM32 GPIO doesn't support true PWM fade here,
+        // we use decreasing on-time pulses)
+        for (int brightness = 10; brightness > 0; brightness--) {
+            for (int pulse = 0; pulse < 20; pulse++) {
+                LED_SetPattern(0x0F);
+                Delay_ms(brightness);
+                LED_SetPattern(0x00);
+                Delay_ms(11 - brightness);
+            }
+        }
+
+        LED_SetPattern(0x00);  // Ensure all off
+        OLED_ShowStatus();
+        animation_played = 1;
+    }
+
+    // Wait for button press to restart
     for (int i = 0; i < 4; i++) {
         if (g_buttons[i].current_state == 1 && g_buttons[i].previous_state == 0) {
             g_level = 1; g_score = 0; g_lives = INITIAL_LIVES; g_difficulty_locked = 0;
+            animation_played = 0;  // Reset for next game over
             set_game_state(GAME_STATE_DIFFICULTY_SELECT);
             break;
         }
