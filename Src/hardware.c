@@ -14,8 +14,8 @@
 /* Global Variables */
 uint32_t SystemCoreClock = 84000000;
 ButtonState_t g_buttons[4];
-uint16_t g_adc_values[3] = {0};
-uint8_t g_current_adc_channel = 0;
+volatile uint16_t g_adc_values[3] = {0};
+volatile uint8_t  g_current_adc_channel = 0;
 
 /* ============================================================================
  * System Initialization
@@ -97,24 +97,31 @@ void ADC_StartConversion(void) {
  * Hardware Monitoring
  * ============================================================================ */
 void Monitor_Buttons(void) {
-    uint32_t current_time = GetTick();
-    uint8_t readings[4] = {
+    uint32_t now = GetTick();
+    uint8_t raw[4] = {
         !(BTN0_PORT->IDR & (1 << BTN0_PIN)),
         !(BTN1_PORT->IDR & (1 << BTN1_PIN)),
         !(BTN2_PORT->IDR & (1 << BTN2_PIN)),
         !(BTN3_PORT->IDR & (1 << BTN3_PIN))
     };
 
-    for(int i = 0; i < 4; i++) {
-        g_buttons[i].previous_state = g_buttons[i].current_state;
-        g_buttons[i].current_state = readings[i];
-        if(g_buttons[i].current_state != g_buttons[i].previous_state) {
-            if((current_time - g_buttons[i].last_change_time) >= BUTTON_DEBOUNCE_MS) {
-                g_buttons[i].last_change_time = current_time;
+    for (int i = 0; i < 4; i++) {
+        // ใช้ previous_state/current_state เดิม แต่ต้องนิ่งครบเวลา
+        if (raw[i] != g_buttons[i].stable_reading) {
+            // มีการเปลี่ยน -> เริ่มจับเวลา
+            if ((now - g_buttons[i].last_change_time) >= BUTTON_DEBOUNCE_MS) {
+                g_buttons[i].stable_reading = raw[i];
+                g_buttons[i].previous_state = g_buttons[i].current_state;
+                g_buttons[i].current_state  = raw[i];
+                g_buttons[i].last_change_time = now;
             }
+        } else {
+            // ไม่มีการเปลี่ยน, อัปเดต time check เพื่อพร้อมใช้ครั้งหน้า
+            g_buttons[i].last_change_time = now;
         }
     }
 }
+
 
 void Monitor_ADC(void) {
     /* ADC handled via interrupt */

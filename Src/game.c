@@ -35,6 +35,17 @@ uint8_t g_input_correct = 1;
 
 GameState_t g_last_state_logged = (GameState_t)-1;
 
+typedef enum { PD_LED_ON, PD_LED_OFF } PatternPhase_t;
+static PatternPhase_t s_phase = PD_LED_ON;
+static uint32_t s_next_deadline = 0;
+
+
+static void pattern_begin(void){
+    g_pattern_index = 0;
+    s_phase = PD_LED_ON;
+    s_next_deadline = 0; // trigger ทันที
+}
+
 /* ============================================================================
  * Difficulty Timing Functions
  * ============================================================================ */
@@ -93,23 +104,38 @@ static void handle_boot(void) {
     Buzzer_Stop();
 }
 
+static uint16_t pot_avg = 0;
+
+static uint8_t map_pot_to_speed(uint16_t v10bit) {
+    // smooth: avg = avg*7/8 + new/8
+    pot_avg = (pot_avg * 7 + v10bit) / 8;
+
+    // map 0..1023 -> 1..5
+    uint8_t s = (uint32_t)(pot_avg * 5) / 1024 + 1;
+
+    // hysteresis: ถ้าต่างจาก g_difficulty น้อย ให้รอก่อน
+    if (s > g_difficulty && (pot_avg % 205) < 20) return g_difficulty; // ขยับขึ้นเมื่อผ่านช่วง
+    if (s < g_difficulty && (pot_avg % 205) > 185) return g_difficulty; // ขยับลงเมื่อผ่านช่วง
+    return s;
+}
+
 static void handle_difficulty_select(void) {
     uint32_t current_time = GetTick();
     static uint32_t last_log_time = 0;
-    static uint8_t last_difficulty = 0;
+    static uint8_t last = 0;
 
     if (!g_difficulty_locked) {
         uint16_t pot_value = g_adc_values[0];
-        g_difficulty = (uint32_t)(pot_value * 5) / 1024 + 1;  // 1..5
+        g_difficulty = map_pot_to_speed(pot_value);
         SevenSeg_Display(g_difficulty);
 
-        if (g_difficulty != last_difficulty || (current_time - last_log_time) > 1000) {
-            Log_Print("[CURRENT SPEED] Pot:%u -> Diff:%u\r\n", pot_value, g_difficulty);
+        if (g_difficulty != last || (current_time - last_log_time) > 200) {
             last_log_time = current_time;
-            last_difficulty = g_difficulty;
-            OLED_ShowStatus();
+            last = g_difficulty;
+            OLED_ShowStatus(); // อัปเดตจอน้อยลง
         }
 
+        // long-press -> lock เหมือนเดิม...
         for (int i = 0; i < 4; i++) {
             if (g_buttons[i].current_state == 1 &&
                (current_time - g_buttons[i].last_change_time) >= LONG_PRESS_DURATION_MS) {
@@ -122,6 +148,7 @@ static void handle_difficulty_select(void) {
         SevenSeg_Display(g_difficulty);
     }
 }
+
 
 static void handle_level_intro(void) {
     Log_Print("Level %u. Lives: %u. Score: %lu\r\n", g_level, g_lives, g_score);
@@ -150,20 +177,30 @@ static void handle_level_intro(void) {
 }
 
 static void handle_pattern_display(void) {
+    uint32_t now = GetTick();
     uint16_t t_on  = diff_on_ms(g_difficulty);
     uint16_t t_off = diff_off_ms(g_difficulty);
 
-    if (g_pattern_index < g_pattern_length) {
-        show_led(g_pattern[g_pattern_index]);
-        Delay_ms(t_on);
-        clear_leds();
-        Delay_ms(t_off);
-        g_pattern_index++;
-    } else {
+    if (g_pattern_index >= g_pattern_length) {
+        // จบ pattern → ไป input
         g_pattern_index = 0;
         g_input_index = 0;
         g_input_correct = 1;
         set_game_state(GAME_STATE_INPUT_WAIT);
+        return;
+    }
+
+    if (now >= s_next_deadline) {
+        if (s_phase == PD_LED_ON) {
+            show_led(g_pattern[g_pattern_index]);      // จะเล่นเสียง/เปิดไฟ
+            s_next_deadline = now + t_on;
+            s_phase = PD_LED_OFF;
+        } else { // PD_LED_OFF
+            clear_leds();                               // จะหยุดเสียง/ดับไฟ
+            s_next_deadline = now + t_off;
+            s_phase = PD_LED_ON;
+            g_pattern_index++;
+        }
     }
 }
 

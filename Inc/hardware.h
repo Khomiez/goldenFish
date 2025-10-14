@@ -12,8 +12,8 @@
 /* Global Variables */
 extern uint32_t SystemCoreClock;
 extern ButtonState_t g_buttons[4];
-extern uint16_t g_adc_values[3];
-extern uint8_t g_current_adc_channel;
+extern volatile uint16_t g_adc_values[3];
+extern volatile uint8_t  g_current_adc_channel;
 
 /* Function Prototypes */
 void SystemClock_Config(void);

@@ -46,6 +46,6 @@ int main(void) {
         Monitor_Buttons();
         Monitor_ADC();
         Game_Run();
-        Delay_ms(5);
+        Delay_ms(1);
     }
 }
