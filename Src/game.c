@@ -69,6 +69,7 @@ uint16_t diff_off_ms(uint8_t diff) {
  * Internal Helper Functions
  * ============================================================================ */
 static void set_game_state(GameState_t new_state) {
+    clear_leds();
     g_game_state = new_state;
     g_state_entry_time = GetTick();
 }
@@ -173,6 +174,7 @@ static void handle_level_intro(void) {
 
     generate_pattern(g_level);
     g_pattern_index = 0;
+    pattern_begin();  
     set_game_state(GAME_STATE_PATTERN_DISPLAY);
 }
 
@@ -251,28 +253,34 @@ static void handle_result_process(void) {
 }
 
 static void handle_victory(void) {
+    static uint8_t played = 0;
     Log_Print("Congratulations! Final Score: %lu\r\n", g_score);
     OLED_ShowStatus();
 
-    // 🎵 เล่นทำนองชนะสั้นๆ
-    uint32_t melody[] = {523, 659, 784}; // C5, E5, G5
-    for (int i = 0; i < 3; i++) {
-        Buzzer_Play(melody[i], 40);   // ความดัง 40%
-        Delay_ms(150);                // โน้ตละ 150 ms
-        Buzzer_Stop();
-        Delay_ms(50);                 // เว้นจังหวะนิดหน่อย
+    if (!played) {                      // <— เล่นครั้งเดียว
+        uint32_t melody[] = {523, 659, 784}; // C5, E5, G5
+        for (int i = 0; i < 3; i++) {
+            Buzzer_Play(melody[i], 40);
+            Delay_ms(150);
+            Buzzer_Stop();
+            Delay_ms(50);
+        }
+        played = 1;
     }
 
+    // รอกดปุ่มเพื่อรีสตาร์ท
     for (int i = 0; i < 4; i++) {
         if (g_buttons[i].current_state == 1 && g_buttons[i].previous_state == 0) {
             g_level = 1;
             g_score = 0;
             g_lives = INITIAL_LIVES;
             g_difficulty_locked = 0;
+            played = 0;                 // <— รีเซ็ตสำหรับรอบถัดไป
             set_game_state(GAME_STATE_DIFFICULTY_SELECT);
             break;
         }
     }
+}
 }
 
 static void handle_game_death(void) {
