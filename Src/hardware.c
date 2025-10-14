@@ -161,31 +161,37 @@ void ADC_IRQHandler(void) {
 }
 
 void Buzzer_Init(void) {
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
-    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;  // เปิด clock ของพอร์ต C
+    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;   // ใช้ TIM3 เหมือนเดิม
 
-    // PA6 -> AF2 (TIM3_CH1)
-    GPIOA->MODER &= ~(3u << (BUZZER_PIN*2));
-    GPIOA->MODER |=  (2u << (BUZZER_PIN*2));    // Alternate function
-    GPIOA->AFR[0] &= ~(0xFu << (BUZZER_PIN*4));
-    GPIOA->AFR[0] |=  (2u   << (BUZZER_PIN*4)); // AF2
+    // PC9 -> AF2 (TIM3_CH4)
+    GPIOC->MODER &= ~(3u << (BUZZER_PIN * 2));
+    GPIOC->MODER |=  (2u << (BUZZER_PIN * 2));    // Alternate function
+    GPIOC->AFR[1] &= ~(0xFu << ((BUZZER_PIN - 8) * 4));
+    GPIOC->AFR[1] |=  (2u   << ((BUZZER_PIN - 8) * 4)); // AF2 = TIM3
 
-    TIM3->PSC  = 83;        // 84 MHz / (83+1) = 1 MHz tick
-    TIM3->ARR  = 1000;      // ค่าเริ่มต้น 1 kHz
-    TIM3->CCR1 = 0;         // duty 0% (เงียบ)
-    TIM3->CCMR1 = (6 << 4) | TIM_CCMR1_OC1PE;   // PWM mode 1
-    TIM3->CCER  = TIM_CCER_CC1E;
-    TIM3->CR1   = TIM_CR1_ARPE | TIM_CR1_CEN;
+    // ตั้งค่า Timer3 channel 4 เป็น PWM
+    TIM3->PSC  = 83;        // 1 MHz tick (84MHz / 84)
+    TIM3->ARR  = 1000;      // ค่าเริ่มต้น ~1kHz
+    TIM3->CCR4 = 0;         // duty 0% (เงียบ)
+
+    TIM3->CCMR2 &= ~(7u << 12);          // เคลียร์ OC4M
+    TIM3->CCMR2 |=  (6u << 12);          // PWM mode 1
+    TIM3->CCMR2 |=  TIM_CCMR2_OC4PE;     // preload enable
+
+    TIM3->CCER  |=  TIM_CCER_CC4E;       // เปิด channel 4 output
+    TIM3->CR1   |=  TIM_CR1_ARPE | TIM_CR1_CEN;
 }
 
+
 void Buzzer_Play(uint32_t freq_hz, uint8_t duty_percent) {
-    if (freq_hz == 0 || duty_percent == 0) { TIM3->CCR1 = 0; return; }
+    if (freq_hz == 0 || duty_percent == 0) { TIM3->CCR4 = 0; return; }
     uint32_t arr = (1000000 / freq_hz) - 1;     // 1 MHz base
     if (arr > 65535) arr = 65535;
     TIM3->ARR  = arr;
-    TIM3->CCR1 = (arr + 1) * duty_percent / 100;
+    TIM3->CCR4 = (arr + 1) * duty_percent / 100;
 }
 
 void Buzzer_Stop(void) {
-    TIM3->CCR1 = 0;
+    TIM3->CCR4 = 0;
 }
