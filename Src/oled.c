@@ -371,16 +371,8 @@ void OLED_ShowStatus(void) {
 
   // Update DIFFICULTY if changed
   if (g_difficulty != prev_difficulty) {
-    oled_clear_region(4, 6 * 5, 128); // Clear entire line 4
+    oled_clear_region(4, 6 * 5, 6 * 8); // Clear difficulty number area
     oled_print_uint(6 * 5, 4, g_difficulty);
-
-    // Redraw SPD progress bar
-    uint8_t spd_val =
-        (g_difficulty < 1) ? 1 : (g_difficulty > 5 ? 5 : g_difficulty);
-    uint8_t spd_bar_x = 6 * 8;
-    uint8_t spd_bar_w = 60;
-    oled_draw_bordered_progress(spd_bar_x, 4, spd_bar_w, spd_val, 5);
-
     prev_difficulty = g_difficulty;
   }
 
