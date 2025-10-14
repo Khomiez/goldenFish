@@ -19,6 +19,14 @@ uint32_t g_state_entry_time;
 uint8_t g_difficulty_locked = 0;
 
 const uint8_t button_to_led_map[4] = {0, 1, 2, 3};
+// ลำดับ index 0..3 ต้องตรงกับลำดับ LED: ฟ้า, แดง, เหลือง, เขียว
+// เลือกเป็นคอร์ด C เมเจอร์ ไล่สูง→ต่ำ ฟังแล้ว “แจ่มใส”
+static const uint16_t tone_by_led[4] = {
+    988, // ฟ้า   (B5)
+    784, // แดง   (G5)
+    659, // เหลือง(E5)
+    523  // เขียว (C5)
+};
 uint8_t g_pattern[MAX_PATTERN_LENGTH] = {0};
 uint8_t g_pattern_length = 0;
 uint8_t g_pattern_index = 0;
@@ -61,12 +69,16 @@ static void generate_pattern(uint8_t length) {
 }
 
 static void show_led(uint8_t idx) {
-    LED_SetPattern(1 << button_to_led_map[idx]);
+    uint8_t led = button_to_led_map[idx];    // ตอนนี้เป็น identity = idx อยู่แล้ว
+    LED_SetPattern(1 << led);
+    Buzzer_Play(tone_by_led[led], 40);       // เล่นโทนประจำสี, duty ~40% ใสพอดี
 }
 
 static void clear_leds(void) {
     LED_SetPattern(0);
+    Buzzer_Stop();                            // หยุดเสียงเมื่อดับไฟ
 }
+
 
 /* ============================================================================
  * State Handler Functions
