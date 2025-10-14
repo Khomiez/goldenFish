@@ -8,8 +8,8 @@
 #define STM32F411xE
 #include "stm32f4xx.h"
 
-#define BUZZER_PORT GPIOA
-#define BUZZER_PIN  6
+#define BUZZER_PORT GPIOC
+#define BUZZER_PIN  9
 
 /* Global Variables */
 uint32_t SystemCoreClock = 84000000;
