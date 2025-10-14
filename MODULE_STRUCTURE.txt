@@ -1,0 +1,96 @@
+================================================================================
+                      MODULE STRUCTURE DIAGRAM
+================================================================================
+
+                              +-------------+
+                              |   main.c    |
+                              | (Entry Point|
+                              +-------------+
+                                     |
+                   +-----------------+-----------------+
+                   |                 |                 |
+                   v                 v                 v
+            +-----------+     +-----------+     +-----------+
+            | hardware  |     |   game    |     |   utils   |
+            |  module   |     |  module   |     |  module   |
+            +-----------+     +-----------+     +-----------+
+                   |                 |                 |
+                   |                 v                 |
+                   |          +-----------+            |
+                   |          |   oled    |            |
+                   |          |  module   |            |
+                   |          +-----------+            |
+                   |                 |                 |
+                   +-----------------+-----------------+
+                                     |
+                              +-----------+
+                              |  config   |
+                              | (defines) |
+                              +-----------+
+
+================================================================================
+                         MODULE DEPENDENCIES
+================================================================================
+
+main.c
+├── config.h          (pin definitions, constants)
+├── hardware.h        (hardware control)
+├── oled.h            (display interface)
+├── game.h            (game logic)
+└── utils.h           (timing, logging)
+
+hardware.c
+├── hardware.h
+├── utils.h           (for Delay_ms)
+└── config.h          (via hardware.h)
+
+game.c
+├── game.h
+├── hardware.h        (LED control, button state, ADC values)
+├── utils.h           (timing, logging)
+├── oled.h            (status display)
+└── config.h          (via game.h)
+
+oled.c
+├── oled.h
+├── game.h            (for game state variables)
+└── config.h          (via game.h)
+
+utils.c
+├── utils.h
+└── (no other project dependencies)
+
+================================================================================
+                         FILE SIZES (Lines)
+================================================================================
+
+Original main.c:       ~700 lines
+
+After refactoring:
+├── main.c             51 lines  (-93% reduction!)
+├── config.h           75 lines
+├── hardware.h         28 lines
+├── hardware.c        179 lines
+├── oled.h             17 lines
+├── oled.c            259 lines
+├── game.h             36 lines
+├── game.c            354 lines
+├── utils.h            17 lines
+└── utils.c            49 lines
+
+Total: ~1065 lines (includes comments and better formatting)
+
+================================================================================
+                      KEY IMPROVEMENTS
+================================================================================
+
+✓ Clear separation of concerns
+✓ 93% reduction in main.c complexity
+✓ Each module has single responsibility
+✓ Easy to locate specific functionality
+✓ Reusable modules for future projects
+✓ Better organization with Inc/ and Src/ directories
+✓ Improved code documentation
+✓ No changes needed to build configuration
+
+================================================================================
