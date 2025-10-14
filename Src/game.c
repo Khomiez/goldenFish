@@ -69,7 +69,7 @@ uint16_t diff_off_ms(uint8_t diff) {
  * Internal Helper Functions
  * ============================================================================ */
 static void set_game_state(GameState_t new_state) {
-    clear_leds();
+    leds_clear();
     g_game_state = new_state;
     g_state_entry_time = GetTick();
 }
@@ -80,16 +80,17 @@ static void generate_pattern(uint8_t length) {
     g_pattern_length = length;
 }
 
-static void show_led(uint8_t idx) {
-    uint8_t led = button_to_led_map[idx];    // ตอนนี้เป็น identity = idx อยู่แล้ว
+static void leds_show(uint8_t idx) {
+    uint8_t led = button_to_led_map[idx];
     LED_SetPattern(1 << led);
-    Buzzer_Play(tone_by_led[led], 40);       // เล่นโทนประจำสี, duty ~40% ใสพอดี
+    Buzzer_Play(tone_by_led[led], 40);
 }
 
-static void clear_leds(void) {
+static void leds_clear(void) {
     LED_SetPattern(0);
-    Buzzer_Stop();                            // หยุดเสียงเมื่อดับไฟ
+    Buzzer_Stop();
 }
+
 
 
 /* ============================================================================
@@ -160,15 +161,15 @@ static void handle_level_intro(void) {
     if (g_level == 1) {
         // Forward: LED0 -> LED1 -> LED2 -> LED3
         for (int i = 0; i < 4; i++) {
-            show_led(i);
+            leds_show(i);
             Delay_ms(150);
         }
         // Backward: LED3 -> LED2 -> LED1 -> LED0
         for (int i = 2; i >= 0; i--) {
-            show_led(i);
+            leds_show(i);
             Delay_ms(150);
         }
-        clear_leds();
+        leds_clear();
         Delay_ms(200);
     }
 
@@ -194,11 +195,11 @@ static void handle_pattern_display(void) {
 
     if (now >= s_next_deadline) {
         if (s_phase == PD_LED_ON) {
-            show_led(g_pattern[g_pattern_index]);      // จะเล่นเสียง/เปิดไฟ
+            leds_show(g_pattern[g_pattern_index]);     // จะเล่นเสียง/เปิดไฟ
             s_next_deadline = now + t_on;
             s_phase = PD_LED_OFF;
         } else { // PD_LED_OFF
-            clear_leds();                               // จะหยุดเสียง/ดับไฟ
+            leds_clear();                            // จะหยุดเสียง/ดับไฟ
             s_next_deadline = now + t_off;
             s_phase = PD_LED_ON;
             g_pattern_index++;
@@ -210,9 +211,9 @@ static void handle_input_wait(void) {
     if (g_input_index < g_pattern_length) {
         for (int i = 0; i < 4; i++) {
             if (g_buttons[i].current_state == 1 && g_buttons[i].previous_state == 0) {
-                show_led(i);
+                leds_show(i);
                 Delay_ms(diff_on_ms(g_difficulty) / 2);
-                clear_leds();
+                leds_clear();
                 if (i != g_pattern[g_input_index]) {
                     g_input_correct = 0;
                 }
@@ -280,7 +281,6 @@ static void handle_victory(void) {
             break;
         }
     }
-}
 }
 
 static void handle_game_death(void) {

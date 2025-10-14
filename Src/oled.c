@@ -217,7 +217,7 @@ void OLED_ShowStatus(void) {
             oled_print_text(0, 7, "INPUT");
             break;
         case GAME_STATE_DIFFICULTY_SELECT:
-            oled_print_text(0, 7, "SPPED-SELECT");
+            oled_print_text(0, 7, "SPEED-SELECT");
             break;
         default:
             oled_print_text(0, 7, "PLAY");

@@ -9,13 +9,6 @@
 #include <stdint.h>
 #include "config.h"
 
-/* Button state structure (used by debounce logic) */
-typedef struct {
-    uint8_t  previous_state;
-    uint8_t  current_state;
-    uint32_t last_change_time;
-    uint8_t  stable_reading;   // สำหรับเก็บค่าที่นิ่งแล้ว
-} ButtonState_t;
 
 /* Global Variables */
 extern uint32_t SystemCoreClock;

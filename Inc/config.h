@@ -51,10 +51,12 @@
 
 /* Type Definitions */
 typedef struct {
-    uint8_t current_state;
-    uint8_t previous_state;
+    uint8_t  previous_state;
+    uint8_t  current_state;
     uint32_t last_change_time;
+    uint8_t  stable_reading;
 } ButtonState_t;
+
 
 typedef enum {
     GAME_STATE_BOOT,
