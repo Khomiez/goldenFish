@@ -6,6 +6,7 @@
 
 #include "oled.h"
 #include "game.h"
+#include <stdint.h>
 
 #define STM32F411xE
 #include "stm32f4xx.h"
@@ -32,30 +33,30 @@ static void I2C1_Init_OLED(void) {
   RCC->APB1RSTR &= ~RCC_APB1RSTR_I2C1RST;
 
   I2C1->CR1 = 0;
-  I2C1->CR2 = 42;  // APB1=42MHz
-  I2C1->CCR = 210; // 100kHz
+  I2C1->CR2 = 42;  // APB1 = 42 MHz
+  I2C1->CCR = 210; // 100 kHz
   I2C1->TRISE = 43;
   I2C1->CR1 = I2C_CR1_PE;
 }
 
 static void i2c_start(uint8_t addr) {
   I2C1->CR1 |= I2C_CR1_START;
-  while (!(I2C1->SR1 & I2C_SR1_SB))
-    ;
+  while (!(I2C1->SR1 & I2C_SR1_SB)) {
+  }
   (void)I2C1->SR1;
   I2C1->DR = addr << 1;
-  while (!(I2C1->SR1 & I2C_SR1_ADDR))
-    ;
+  while (!(I2C1->SR1 & I2C_SR1_ADDR)) {
+  }
   (void)I2C1->SR1;
   (void)I2C1->SR2;
 }
 
 static void i2c_w(uint8_t b) {
-  while (!(I2C1->SR1 & I2C_SR1_TXE))
-    ;
+  while (!(I2C1->SR1 & I2C_SR1_TXE)) {
+  }
   I2C1->DR = b;
-  while (!(I2C1->SR1 & I2C_SR1_BTF))
-    ;
+  while (!(I2C1->SR1 & I2C_SR1_BTF)) {
+  }
 }
 
 static void i2c_stop(void) { I2C1->CR1 |= I2C_CR1_STOP; }
@@ -113,7 +114,7 @@ static const uint8_t FONT5x7_LET[26][6] = {
     /*M*/ {0x7F, 0x02, 0x0C, 0x02, 0x7F, 0x00},
     /*N*/ {0x7F, 0x04, 0x08, 0x10, 0x7F, 0x00},
     /*O*/ {0x3E, 0x41, 0x41, 0x41, 0x3E, 0x00},
-    /*P*/ {0x7F, 0x09, 0x09, 0x09, 0x06, 0x00},
+    /*P*/ {0x7F, 0x09, 0x09, 0x09, 0x06, 0x0 0},
     /*Q*/ {0x3E, 0x41, 0x51, 0x21, 0x5E, 0x00},
     /*R*/ {0x7F, 0x09, 0x19, 0x29, 0x46, 0x00},
     /*S*/ {0x46, 0x49, 0x49, 0x49, 0x31, 0x00},
@@ -177,57 +178,44 @@ static void oled_draw_icon8(uint8_t x, uint8_t page, const uint8_t *icon8) {
   oled_data(icon8, 8);
 }
 
-static void oled_print_text(uint8_t x, uint8_t page, const char *s) {
-  while (*s) {
-    char c = (*s >= 'a' && *s <= 'z') ? (*s - 32) : *s;
-    oled_draw_letter(x, page, c);
-    x += 6;
-    s++;
-  }
+/* ---- NEW: Horizontal flip draw for 8-column icons (fix mirrored hearts) ----
+ */
+static void oled_draw_icon8_hflip(uint8_t x, uint8_t page,
+                                  const uint8_t *icon8) {
+  uint8_t buf[8];
+  // Reverse column order (left <-> right); bit rows unchanged.
+  for (int i = 0; i < 8; ++i)
+    buf[i] = icon8[7 - i];
+  oled_setpos(page, x);
+  oled_data(buf, 8);
 }
 
-static void oled_print_uint(uint8_t x, uint8_t page, unsigned v) {
-  char buf[10];
-  int n = 0;
-
-  if (v == 0) {
-    oled_draw_digit(x, page, 0);
-    return;
-  }
-
-  while (v && n < 10) {
-    buf[n++] = '0' + (v % 10);
-    v /= 10;
-  }
-
-  for (int i = n - 1; i >= 0; i--, x += 6) {
-    oled_draw_digit(x, page, buf[i] - '0');
-  }
-}
-
+/* Proportional bar made of 6-col glyph tiles (legacy) */
 static void oled_draw_progress_bar(uint8_t x, uint8_t page, uint8_t current,
-                                   uint8_t max, uint8_t width) {
-  uint8_t filled = (width * current) / max;
-  if (filled > width)
-    filled = width;
+                                   uint8_t max, uint8_t width_tiles) {
+  if (max == 0)
+    max = 1;
+  uint8_t filled = (uint8_t)((uint16_t)width_tiles * current / max);
+  if (filled > width_tiles)
+    filled = width_tiles;
 
-  for (uint8_t i = 0; i < width; i++) {
+  for (uint8_t i = 0; i < width_tiles; i++) {
     if (i < filled) {
-      oled_draw_icon(x + i * 6, page, ICON_BLOCK_FULL);
+      oled_draw_icon((uint8_t)(x + i * 6), page, ICON_BLOCK_FULL);
     } else {
-      oled_draw_icon(x + i * 6, page, ICON_BLOCK_EMPTY);
+      oled_draw_icon((uint8_t)(x + i * 6), page, ICON_BLOCK_EMPTY);
     }
   }
 }
 
 /* ---------- Bordered proportional progress bar (1 page tall) ---------- */
-// width_cols: bar width in columns (pixels) on this page (>=4 recommended).
-// value/max: filled proportion from 0..max; clamps applied.
+/* width_cols: bar width in columns (pixels) on one page (>=4).
+   value/max: 0..max; clamps applied. */
 static void oled_draw_bordered_progress(uint8_t x, uint8_t page,
                                         uint8_t width_cols, uint8_t value,
                                         uint8_t max) {
   if (width_cols < 4)
-    return; // not enough room for borders
+    return;
   if (max == 0)
     max = 1;
   if (value > max)
@@ -238,29 +226,16 @@ static void oled_draw_bordered_progress(uint8_t x, uint8_t page,
   if (w > sizeof(colbuf))
     w = sizeof(colbuf);
 
-  // Interior width (between vertical borders)
-  uint8_t interior = (w >= 2) ? (uint8_t)(w - 2) : 0;
+  uint8_t interior = (uint8_t)(w - 2);
   uint8_t fill_cols = (uint8_t)((uint16_t)interior * value / max);
 
-  // Left border (vertical line = 7px high)
-  colbuf[0] = 0x7F;
-
-  // Interior columns
+  colbuf[0] = 0x7F; // left vertical border (7 px)
   for (uint8_t i = 0; i < interior; i++) {
-    if (i < fill_cols) {
-      // Filled interior (no top/bottom stroke) => solid area
-      colbuf[1 + i] = 0x7E;
-    } else {
-      // Empty interior: keep top & bottom strokes (thin outline feeling)
-      colbuf[1 + i] = 0x41;
-    }
+    colbuf[1 + i] =
+        (i < fill_cols) ? 0x7E : 0x41; // filled vs empty (top/bot stroke)
   }
+  colbuf[w - 1] = 0x7F; // right border
 
-  // Right border
-  if (w >= 2)
-    colbuf[w - 1] = 0x7F;
-
-  // Blit one scanline
   oled_setpos(page, x);
   oled_data(colbuf, w);
 }
@@ -278,10 +253,14 @@ void oled_clear(void) {
 }
 
 /* Clear a specific region (page and column range) */
-static void oled_clear_region(uint8_t page, uint8_t col_start, uint8_t col_end) {
+static void oled_clear_region(uint8_t page, uint8_t col_start,
+                              uint8_t col_end) {
+  if (col_end <= col_start)
+    return;
+  uint8_t width = (uint8_t)(col_end - col_start);
   uint8_t z[128] = {0};
-  uint8_t width = col_end - col_start;
-  if (width > 128) width = 128;
+  if (width > 128)
+    width = 128;
   oled_setpos(page, col_start);
   oled_data(z, width);
 }
@@ -323,40 +302,55 @@ void OLED_ShowStatus(void) {
   // Static variables to track previous state (for selective updates)
   static uint8_t prev_level = 0xFF;
   static uint8_t prev_lives = 0xFF;
-  static uint32_t prev_score = 0xFFFFFFFF;
+  static uint32_t prev_score = 0xFFFFFFFFu;
   static uint8_t prev_difficulty = 0xFF;
   static uint8_t prev_pattern_index = 0xFF;
   static uint8_t prev_pattern_length = 0xFF;
   static GameState_t prev_state = (GameState_t)0xFF;
   static uint8_t first_run = 1;
 
+  // Layout constants
+  const uint8_t COL_LEVEL_NUM = (uint8_t)(6 * 7);
+  const uint8_t COL_SCORE_VAL = (uint8_t)(6 * 7);
+  const uint8_t COL_SPD_NUM = (uint8_t)(6 * 5); // after "SPD:"
+  const uint8_t COL_SPD_BAR = (uint8_t)(6 * 8); // speed bar start
+  const uint8_t W_SPD_BAR = 80;                 // width in columns
+
+  // Pattern bar (keep on page 4 right side)
+  const uint8_t COL_PAT_BAR = 60;
+  const uint8_t W_PAT_BAR = 66; // width in columns
+
   // Force full redraw on first run
   if (first_run) {
     oled_clear();
     first_run = 0;
-    // Draw static labels once
+    // Static labels
     oled_print_text(0, 0, "LEVEL ");
     oled_print_text(0, 2, "SCORE:");
     oled_print_text(0, 4, "SPD:");
     oled_print_text(0, 6, ">");
+    // Draw empty bars initially
+    oled_draw_bordered_progress(COL_SPD_BAR, 4, W_SPD_BAR, 0, 1);
+    oled_draw_bordered_progress(COL_PAT_BAR, 4, W_PAT_BAR, 0, 1);
   }
 
   // Update LEVEL if changed
   if (g_level != prev_level) {
-    oled_clear_region(0, 6 * 7, 6 * 10); // Clear level number area
-    oled_print_uint(6 * 7, 0, g_level);
+    oled_clear_region(0, COL_LEVEL_NUM, (uint8_t)(COL_LEVEL_NUM + 6 * 3));
+    oled_print_uint(COL_LEVEL_NUM, 0, g_level);
     prev_level = g_level;
   }
 
   // Update LIVES (hearts) if changed
   if (g_lives != prev_lives) {
-    uint8_t heart_x = 128 - (INITIAL_LIVES * 9);
+    // horizontally flipped hearts to compensate display mirroring
+    uint8_t heart_x = (uint8_t)(128 - (INITIAL_LIVES * 9));
     for (uint8_t i = 0; i < INITIAL_LIVES; i++) {
-      uint8_t x = heart_x + i * 9;
+      uint8_t x = (uint8_t)(heart_x + i * 9);
       if (i < g_lives) {
-        oled_draw_icon8(x, 0, ICON_HEART_ROT90);
+        oled_draw_icon8_hflip(x, 0, ICON_HEART_ROT90);
       } else {
-        oled_draw_icon8(x, 0, ICON_HEART_EMPTY_ROT90);
+        oled_draw_icon8_hflip(x, 0, ICON_HEART_EMPTY_ROT90);
       }
     }
     prev_lives = g_lives;
@@ -364,25 +358,38 @@ void OLED_ShowStatus(void) {
 
   // Update SCORE if changed
   if (g_score != prev_score) {
-    oled_clear_region(2, 6 * 7, 128); // Clear score area
-    oled_print_uint(6 * 7, 2, g_score);
+    oled_clear_region(2, COL_SCORE_VAL, 128);
+    oled_print_uint(COL_SCORE_VAL, 2, g_score);
     prev_score = g_score;
   }
 
-  // Update DIFFICULTY if changed
+  // Update DIFFICULTY number + Speed bar (speed 1..5 -> 0..100%)
   if (g_difficulty != prev_difficulty) {
-    oled_clear_region(4, 6 * 5, 6 * 8); // Clear difficulty number area
-    oled_print_uint(6 * 5, 4, g_difficulty);
+    // numeric
+    oled_clear_region(4, COL_SPD_NUM, (uint8_t)(COL_SPD_NUM + 6 * 3));
+    oled_print_uint(COL_SPD_NUM, 4, g_difficulty);
+    // bar (clamp to 0..5, 5 = full)
+    uint8_t spd = g_difficulty;
+    if (spd > 5)
+      spd = 5;
+    oled_clear_region(4, COL_SPD_BAR, (uint8_t)(COL_SPD_BAR + W_SPD_BAR));
+    oled_draw_bordered_progress(COL_SPD_BAR, 4, W_SPD_BAR, spd, 5);
     prev_difficulty = g_difficulty;
   }
 
   // Update PATTERN progress bar if changed
-  if (g_pattern_index != prev_pattern_index ||
-      g_pattern_length != prev_pattern_length) {
-    // Clear pattern bar area
-    oled_clear_region(4, 60, 128);
+  if ((g_pattern_index != prev_pattern_index) ||
+      (g_pattern_length != prev_pattern_length)) {
+    oled_clear_region(4, COL_PAT_BAR, (uint8_t)(COL_PAT_BAR + W_PAT_BAR));
     if (g_pattern_length > 0) {
-      oled_draw_progress_bar(60, 4, g_pattern_index, g_pattern_length, 10);
+      uint8_t cur = g_pattern_index;
+      if (cur > g_pattern_length)
+        cur = g_pattern_length;
+      oled_draw_bordered_progress(COL_PAT_BAR, 4, W_PAT_BAR, cur,
+                                  g_pattern_length);
+    } else {
+      // draw empty bar
+      oled_draw_bordered_progress(COL_PAT_BAR, 4, W_PAT_BAR, 0, 1);
     }
     prev_pattern_index = g_pattern_index;
     prev_pattern_length = g_pattern_length;
@@ -390,7 +397,7 @@ void OLED_ShowStatus(void) {
 
   // Update STATE message if changed
   if (g_game_state != prev_state) {
-    oled_clear_region(6, 12, 128); // Clear message area
+    oled_clear_region(6, 12, 128);
     switch (g_game_state) {
     case GAME_STATE_VICTORY:
       oled_print_text(12, 6, "VICTORY");
