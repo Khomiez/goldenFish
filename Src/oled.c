@@ -129,11 +129,17 @@ static const uint8_t FONT5x7_SPACE[6] = {0, 0, 0, 0, 0, 0};
 static const uint8_t FONT5x7_MINUS[6] = {0x08, 0x08, 0x08, 0x08, 0x08, 0x00};
 static const uint8_t FONT5x7_COLON[6] = {0x00, 0x00, 0x36, 0x36, 0x00, 0x00};
 
-/* Custom Icons */
-static const uint8_t ICON_HEART[6] = {0x10, 0x38, 0x7C, 0x7E, 0x7C, 0x38};
-static const uint8_t ICON_HEART_EMPTY[6] = {0x10, 0x28, 0x44, 0x42, 0x44, 0x28};
+/* Custom Icons (upright) */
+static const uint8_t ICON_HEART[6] = {0x36, 0x7F, 0x7F, 0x3E, 0x1C, 0x08};
+static const uint8_t ICON_HEART_EMPTY[6] = {0x22, 0x41, 0x41, 0x22, 0x14, 0x08};
 static const uint8_t ICON_BLOCK_FULL[6] = {0x7F, 0x7F, 0x7F, 0x7F, 0x7F, 0x00};
 static const uint8_t ICON_BLOCK_EMPTY[6] = {0x7F, 0x41, 0x41, 0x41, 0x7F, 0x00};
+
+/* Rotated 90° CW heart icons (8 columns wide) */
+static const uint8_t ICON_HEART_ROT90[8] = {0x18, 0x3C, 0x3E, 0x1F,
+                                            0x3E, 0x3C, 0x18, 0x00};
+static const uint8_t ICON_HEART_EMPTY_ROT90[8] = {0x18, 0x24, 0x02, 0x01,
+                                                  0x02, 0x24, 0x18, 0x00};
 
 /* ============================================================================
  * Text & Drawing Functions
@@ -163,6 +169,12 @@ static void oled_draw_letter(uint8_t x, uint8_t page, char c) {
 static void oled_draw_icon(uint8_t x, uint8_t page, const uint8_t *icon) {
   oled_setpos(page, x);
   oled_data(icon, 6);
+}
+
+/* Draw an 8-column icon (used for rotated hearts) */
+static void oled_draw_icon8(uint8_t x, uint8_t page, const uint8_t *icon8) {
+  oled_setpos(page, x);
+  oled_data(icon8, 8);
 }
 
 static void oled_print_text(uint8_t x, uint8_t page, const char *s) {
@@ -208,8 +220,7 @@ static void oled_draw_progress_bar(uint8_t x, uint8_t page, uint8_t current,
   }
 }
 
-/* ---------- New: Bordered proportional progress bar (1 page tall) ----------
- */
+/* ---------- Bordered proportional progress bar (1 page tall) ---------- */
 // width_cols: bar width in columns (pixels) on this page (>=4 recommended).
 // value/max: filled proportion from 0..max; clamps applied.
 static void oled_draw_bordered_progress(uint8_t x, uint8_t page,
@@ -266,6 +277,15 @@ void oled_clear(void) {
   }
 }
 
+/* Clear a specific region (page and column range) */
+static void oled_clear_region(uint8_t page, uint8_t col_start, uint8_t col_end) {
+  uint8_t z[128] = {0};
+  uint8_t width = col_end - col_start;
+  if (width > 128) width = 128;
+  oled_setpos(page, col_start);
+  oled_data(z, width);
+}
+
 void oled_init(void) {
   I2C1_Init_OLED();
 
@@ -300,67 +320,108 @@ void oled_init(void) {
 }
 
 void OLED_ShowStatus(void) {
-  oled_clear();
+  // Static variables to track previous state (for selective updates)
+  static uint8_t prev_level = 0xFF;
+  static uint8_t prev_lives = 0xFF;
+  static uint32_t prev_score = 0xFFFFFFFF;
+  static uint8_t prev_difficulty = 0xFF;
+  static uint8_t prev_pattern_index = 0xFF;
+  static uint8_t prev_pattern_length = 0xFF;
+  static GameState_t prev_state = (GameState_t)0xFF;
+  static uint8_t first_run = 1;
 
-  // Line 0: LEVEL <num>  <hearts>
-  oled_print_text(0, 0, "LEVEL ");
-  oled_print_uint(6 * 7, 0, g_level);
+  // Force full redraw on first run
+  if (first_run) {
+    oled_clear();
+    first_run = 0;
+    // Draw static labels once
+    oled_print_text(0, 0, "LEVEL ");
+    oled_print_text(0, 2, "SCORE:");
+    oled_print_text(0, 4, "SPD:");
+    oled_print_text(0, 6, ">");
+  }
 
-  // Draw hearts for lives (right side)
-  uint8_t heart_x = 84;
-  for (uint8_t i = 0; i < INITIAL_LIVES; i++) {
-    if (i < g_lives) {
-      oled_draw_icon(heart_x + i * 7, 0, ICON_HEART);
-    } else {
-      oled_draw_icon(heart_x + i * 7, 0, ICON_HEART_EMPTY);
+  // Update LEVEL if changed
+  if (g_level != prev_level) {
+    oled_clear_region(0, 6 * 7, 6 * 10); // Clear level number area
+    oled_print_uint(6 * 7, 0, g_level);
+    prev_level = g_level;
+  }
+
+  // Update LIVES (hearts) if changed
+  if (g_lives != prev_lives) {
+    uint8_t heart_x = 128 - (INITIAL_LIVES * 9);
+    for (uint8_t i = 0; i < INITIAL_LIVES; i++) {
+      uint8_t x = heart_x + i * 9;
+      if (i < g_lives) {
+        oled_draw_icon8(x, 0, ICON_HEART_ROT90);
+      } else {
+        oled_draw_icon8(x, 0, ICON_HEART_EMPTY_ROT90);
+      }
     }
+    prev_lives = g_lives;
   }
 
-  // Line 2: SCORE: <number>
-  oled_print_text(0, 2, "SCORE:");
-  oled_print_uint(6 * 7, 2, g_score);
-
-  // Line 4: SPD:<num>  [bordered proportional bar]
-  oled_print_text(0, 4, "SPD:");
-  oled_print_uint(6 * 5, 4, g_difficulty);
-
-  // Proportional bar (5 => 100%)
-  uint8_t spd_val =
-      (g_difficulty < 1) ? 1 : (g_difficulty > 5 ? 5 : g_difficulty);
-  uint8_t spd_bar_x = 6 * 8; // position after text/number
-  uint8_t spd_bar_w =
-      60; // width in columns; tweak as desired (40–80 looks good)
-  oled_draw_bordered_progress(spd_bar_x, 4, spd_bar_w, spd_val, 5);
-
-  // Line 4 (continued): Pattern progress (kept as your original block-style
-  // bar)
-  if (g_pattern_length > 0) {
-    oled_draw_progress_bar(60, 4, g_pattern_index, g_pattern_length, 10);
+  // Update SCORE if changed
+  if (g_score != prev_score) {
+    oled_clear_region(2, 6 * 7, 128); // Clear score area
+    oled_print_uint(6 * 7, 2, g_score);
+    prev_score = g_score;
   }
 
-  // Line 6-7: Status message (larger, more descriptive)
-  oled_print_text(0, 6, ">");
-  switch (g_game_state) {
-  case GAME_STATE_VICTORY:
-    oled_print_text(12, 6, "VICTORY");
-    break;
-  case GAME_STATE_GAME_DEATH:
-    oled_print_text(12, 6, "GAME OVER");
-    break;
-  case GAME_STATE_PATTERN_DISPLAY:
-    oled_print_text(12, 6, "WATCH");
-    break;
-  case GAME_STATE_INPUT_WAIT:
-    oled_print_text(12, 6, "YOUR TURN");
-    break;
-  case GAME_STATE_DIFFICULTY_SELECT:
-    oled_print_text(12, 6, "SELECT SPEED");
-    break;
-  case GAME_STATE_LEVEL_INTRO:
-    oled_print_text(12, 6, "GET READY");
-    break;
-  default:
-    oled_print_text(12, 6, "READY");
-    break;
+  // Update DIFFICULTY if changed
+  if (g_difficulty != prev_difficulty) {
+    oled_clear_region(4, 6 * 5, 128); // Clear entire line 4
+    oled_print_uint(6 * 5, 4, g_difficulty);
+
+    // Redraw SPD progress bar
+    uint8_t spd_val =
+        (g_difficulty < 1) ? 1 : (g_difficulty > 5 ? 5 : g_difficulty);
+    uint8_t spd_bar_x = 6 * 8;
+    uint8_t spd_bar_w = 60;
+    oled_draw_bordered_progress(spd_bar_x, 4, spd_bar_w, spd_val, 5);
+
+    prev_difficulty = g_difficulty;
+  }
+
+  // Update PATTERN progress bar if changed
+  if (g_pattern_index != prev_pattern_index ||
+      g_pattern_length != prev_pattern_length) {
+    // Clear pattern bar area
+    oled_clear_region(4, 60, 128);
+    if (g_pattern_length > 0) {
+      oled_draw_progress_bar(60, 4, g_pattern_index, g_pattern_length, 10);
+    }
+    prev_pattern_index = g_pattern_index;
+    prev_pattern_length = g_pattern_length;
+  }
+
+  // Update STATE message if changed
+  if (g_game_state != prev_state) {
+    oled_clear_region(6, 12, 128); // Clear message area
+    switch (g_game_state) {
+    case GAME_STATE_VICTORY:
+      oled_print_text(12, 6, "VICTORY");
+      break;
+    case GAME_STATE_GAME_DEATH:
+      oled_print_text(12, 6, "GAME OVER");
+      break;
+    case GAME_STATE_PATTERN_DISPLAY:
+      oled_print_text(12, 6, "WATCH");
+      break;
+    case GAME_STATE_INPUT_WAIT:
+      oled_print_text(12, 6, "YOUR TURN");
+      break;
+    case GAME_STATE_DIFFICULTY_SELECT:
+      oled_print_text(12, 6, "SELECT SPEED");
+      break;
+    case GAME_STATE_LEVEL_INTRO:
+      oled_print_text(12, 6, "GET READY");
+      break;
+    default:
+      oled_print_text(12, 6, "READY");
+      break;
+    }
+    prev_state = g_game_state;
   }
 }
