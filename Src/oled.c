@@ -109,6 +109,13 @@ static const uint8_t FONT5x7_LET[26][6] = {
 
 static const uint8_t FONT5x7_SPACE[6] = {0,0,0,0,0,0};
 static const uint8_t FONT5x7_MINUS[6] = {0x08,0x08,0x08,0x08,0x08,0x00};
+static const uint8_t FONT5x7_COLON[6] = {0x00,0x00,0x36,0x36,0x00,0x00};
+
+/* Custom Icons */
+static const uint8_t ICON_HEART[6] = {0x0C,0x1E,0x3F,0x1E,0x0C,0x00};
+static const uint8_t ICON_HEART_EMPTY[6] = {0x0C,0x12,0x21,0x12,0x0C,0x00};
+static const uint8_t ICON_BLOCK_FULL[6] = {0x7F,0x7F,0x7F,0x7F,0x7F,0x00};
+static const uint8_t ICON_BLOCK_EMPTY[6] = {0x7F,0x41,0x41,0x41,0x7F,0x00};
 
 /* ============================================================================
  * Text Drawing Functions
@@ -125,8 +132,14 @@ static void oled_draw_letter(uint8_t x, uint8_t page, char c) {
     if(c >= 'A' && c <= 'Z') g = FONT5x7_LET[c-'A'];
     else if(c >= '0' && c <= '9') g = FONT5x7_DIGIT[c-'0'];
     else if(c == '-') g = FONT5x7_MINUS;
+    else if(c == ':') g = FONT5x7_COLON;
     oled_setpos(page, x);
     oled_data(g, 6);
+}
+
+static void oled_draw_icon(uint8_t x, uint8_t page, const uint8_t* icon) {
+    oled_setpos(page, x);
+    oled_data(icon, 6);
 }
 
 static void oled_print_text(uint8_t x, uint8_t page, const char* s) {
@@ -154,6 +167,19 @@ static void oled_print_uint(uint8_t x, uint8_t page, unsigned v) {
 
     for(int i = n - 1; i >= 0; i--, x += 6) {
         oled_draw_digit(x, page, buf[i] - '0');
+    }
+}
+
+static void oled_draw_progress_bar(uint8_t x, uint8_t page, uint8_t current, uint8_t max, uint8_t width) {
+    uint8_t filled = (width * current) / max;
+    if(filled > width) filled = width;
+
+    for(uint8_t i = 0; i < width; i++) {
+        if(i < filled) {
+            oled_draw_icon(x + i*6, page, ICON_BLOCK_FULL);
+        } else {
+            oled_draw_icon(x + i*6, page, ICON_BLOCK_EMPTY);
+        }
     }
 }
 
@@ -186,41 +212,56 @@ void oled_init(void) {
 void OLED_ShowStatus(void) {
     oled_clear();
 
-    // LEVEL
-    oled_print_text(0, 0, "LEVEL");
-    oled_print_uint(6*6, 0, g_level);
+    // Line 0: LEVEL <num>  <hearts>
+    oled_print_text(0, 0, "LEVEL ");
+    oled_print_uint(6*7, 0, g_level);
 
-    // LIVES
-    oled_print_text(0, 2, "LIVES");
-    oled_print_uint(6*6, 2, g_lives);
+    // Draw hearts for lives (right side)
+    uint8_t heart_x = 84;
+    for(uint8_t i = 0; i < INITIAL_LIVES; i++) {
+        if(i < g_lives) {
+            oled_draw_icon(heart_x + i*7, 0, ICON_HEART);
+        } else {
+            oled_draw_icon(heart_x + i*7, 0, ICON_HEART_EMPTY);
+        }
+    }
 
-    // SCORE
-    oled_print_text(0, 4, "SCORE");
-    oled_print_uint(6*6, 4, g_score);
+    // Line 2: SCORE: <number>
+    oled_print_text(0, 2, "SCORE:");
+    oled_print_uint(6*7, 2, g_score);
 
-    // DIFF
-    oled_print_text(0, 6, "DIFF");
-    oled_print_uint(6*6, 6, g_difficulty);
+    // Line 4: SPD:<num>  [progress bar]
+    oled_print_text(0, 4, "SPD:");
+    oled_print_uint(6*5, 4, g_difficulty);
 
-    // STATE
+    // Progress bar showing pattern completion (pattern_index / pattern_length)
+    if(g_pattern_length > 0) {
+        oled_draw_progress_bar(60, 4, g_pattern_index, g_pattern_length, 10);
+    }
+
+    // Line 6-7: Status message (larger, more descriptive)
+    oled_print_text(0, 6, ">");
     switch(g_game_state) {
         case GAME_STATE_VICTORY:
-            oled_print_text(0, 7, "VICTORY");
+            oled_print_text(12, 6, "VICTORY");
             break;
         case GAME_STATE_GAME_DEATH:
-            oled_print_text(0, 7, "GAME-OVER");
+            oled_print_text(12, 6, "GAME OVER");
             break;
         case GAME_STATE_PATTERN_DISPLAY:
-            oled_print_text(0, 7, "SHOW");
+            oled_print_text(12, 6, "WATCH");
             break;
         case GAME_STATE_INPUT_WAIT:
-            oled_print_text(0, 7, "INPUT");
+            oled_print_text(12, 6, "YOUR TURN");
             break;
         case GAME_STATE_DIFFICULTY_SELECT:
-            oled_print_text(0, 7, "DIFF-SEL");
+            oled_print_text(12, 6, "SELECT SPEED");
+            break;
+        case GAME_STATE_LEVEL_INTRO:
+            oled_print_text(12, 6, "GET READY");
             break;
         default:
-            oled_print_text(0, 7, "PLAY");
+            oled_print_text(12, 6, "READY");
             break;
     }
 }
