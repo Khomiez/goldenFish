@@ -9,11 +9,12 @@
 #include <stdint.h>
 #include "config.h"
 
+
 /* Global Variables */
 extern uint32_t SystemCoreClock;
 extern ButtonState_t g_buttons[4];
-extern uint16_t g_adc_values[3];
-extern uint8_t g_current_adc_channel;
+extern volatile uint16_t g_adc_values[3];   // ISR เขียนค่า -> volatile
+extern volatile uint8_t  g_current_adc_channel;
 
 /* Function Prototypes */
 void SystemClock_Config(void);
@@ -27,5 +28,10 @@ void Monitor_Buttons(void);
 void Monitor_ADC(void);
 void LED_SetPattern(uint8_t pattern);
 void SevenSeg_Display(uint8_t digit);
+
+/* Buzzer control */
+void Buzzer_Init(void);
+void Buzzer_Play(uint32_t freq_hz, uint8_t duty_percent);
+void Buzzer_Stop(void);
 
 #endif /* HARDWARE_H */

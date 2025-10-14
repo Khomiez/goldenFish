@@ -8,11 +8,14 @@
 #define STM32F411xE
 #include "stm32f4xx.h"
 
+#define BUZZER_PORT GPIOC
+#define BUZZER_PIN  9
+
 /* Global Variables */
 uint32_t SystemCoreClock = 84000000;
 ButtonState_t g_buttons[4];
-uint16_t g_adc_values[3] = {0};
-uint8_t g_current_adc_channel = 0;
+volatile uint16_t g_adc_values[3] = {0};
+volatile uint8_t  g_current_adc_channel = 0;
 
 /* ============================================================================
  * System Initialization
@@ -38,29 +41,40 @@ void SystemClock_Config(void) {
 }
 
 void GPIO_Init(void) {
+    // --- Init button state memory (สำหรับ debounce แบบใหม่) ---
+    for (int i = 0; i < 4; i++) {
+        g_buttons[i].previous_state   = 0;
+        g_buttons[i].current_state    = 0;
+        g_buttons[i].stable_reading   = 0;   // ต้องมีฟิลด์นี้ใน struct
+        g_buttons[i].last_change_time = 0;
+    }
+
+    // --- Enable GPIO clocks ---
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOCEN;
 
-    // LEDs as outputs
+    // --- LEDs as outputs ---
     GPIOA->MODER |= (1 << (LED1_PIN*2)) | (1 << (LED2_PIN*2)) | (1 << (LED3_PIN*2));
     GPIOB->MODER |= (1 << (LED4_PIN*2));
 
-    // Buttons with pull-ups
+    // --- Buttons as inputs with pull-ups (active-low) ---
+    // (ขา input เป็นค่า default อยู่แล้ว จึงตั้งแค่ PUPDR ก็พอ)
     GPIOA->PUPDR |= (1 << (BTN0_PIN*2));
     GPIOB->PUPDR |= (1 << (BTN1_PIN*2)) | (1 << (BTN2_PIN*2)) | (1 << (BTN3_PIN*2));
 
-    // ADC pins as analog
+    // --- ADC pins as analog ---
     GPIOA->MODER |= (3 << (POT_PIN*2)) | (3 << (TEMP_PIN*2)) | (3 << (LIGHT_PIN*2));
 
-    // UART2: PA2, PA3 as AF7
+    // --- UART2: PA2, PA3 as AF7 ---
     GPIOA->MODER |= (2 << (2*2)) | (2 << (3*2));
     GPIOA->AFR[0] |= (7 << (2*4)) | (7 << (3*4));
 
-    // 7-Segment BCD outputs
+    // --- 7-Segment BCD outputs ---
     GPIOC->MODER = (GPIOC->MODER & ~(3U << (BCD_2_0_PIN*2))) | (1U << (BCD_2_0_PIN*2));
     GPIOA->MODER = (GPIOA->MODER & ~((3U << (BCD_2_1_PIN*2)) | (3U << (BCD_2_3_PIN*2)))) |
                    (1U << (BCD_2_1_PIN*2)) | (1U << (BCD_2_3_PIN*2));
     GPIOB->MODER = (GPIOB->MODER & ~(3U << (BCD_2_2_PIN*2))) | (1U << (BCD_2_2_PIN*2));
 }
+
 
 void ADC_Init(void) {
     RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
@@ -94,24 +108,31 @@ void ADC_StartConversion(void) {
  * Hardware Monitoring
  * ============================================================================ */
 void Monitor_Buttons(void) {
-    uint32_t current_time = GetTick();
-    uint8_t readings[4] = {
+    uint32_t now = GetTick();
+    uint8_t raw[4] = {
         !(BTN0_PORT->IDR & (1 << BTN0_PIN)),
         !(BTN1_PORT->IDR & (1 << BTN1_PIN)),
         !(BTN2_PORT->IDR & (1 << BTN2_PIN)),
         !(BTN3_PORT->IDR & (1 << BTN3_PIN))
     };
 
-    for(int i = 0; i < 4; i++) {
-        g_buttons[i].previous_state = g_buttons[i].current_state;
-        g_buttons[i].current_state = readings[i];
-        if(g_buttons[i].current_state != g_buttons[i].previous_state) {
-            if((current_time - g_buttons[i].last_change_time) >= BUTTON_DEBOUNCE_MS) {
-                g_buttons[i].last_change_time = current_time;
+    for (int i = 0; i < 4; i++) {
+        // ใช้ previous_state/current_state เดิม แต่ต้องนิ่งครบเวลา
+        if (raw[i] != g_buttons[i].stable_reading) {
+            // มีการเปลี่ยน -> เริ่มจับเวลา
+            if ((now - g_buttons[i].last_change_time) >= BUTTON_DEBOUNCE_MS) {
+                g_buttons[i].stable_reading = raw[i];
+                g_buttons[i].previous_state = g_buttons[i].current_state;
+                g_buttons[i].current_state  = raw[i];
+                g_buttons[i].last_change_time = now;
             }
+        } else {
+            // ไม่มีการเปลี่ยน, อัปเดต time check เพื่อพร้อมใช้ครั้งหน้า
+            g_buttons[i].last_change_time = now;
         }
     }
 }
+
 
 void Monitor_ADC(void) {
     /* ADC handled via interrupt */
@@ -155,4 +176,40 @@ void ADC_IRQHandler(void) {
                      (g_current_adc_channel == 1 ? TEMP_PIN : LIGHT_PIN));
         ADC1->CR2 |= ADC_CR2_SWSTART;
     }
+}
+
+void Buzzer_Init(void) {
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;  // เปิด clock ของพอร์ต C
+    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;   // ใช้ TIM3 เหมือนเดิม
+
+    // PC9 -> AF2 (TIM3_CH4)
+    GPIOC->MODER &= ~(3u << (BUZZER_PIN * 2));
+    GPIOC->MODER |=  (2u << (BUZZER_PIN * 2));    // Alternate function
+    GPIOC->AFR[1] &= ~(0xFu << ((BUZZER_PIN - 8) * 4));
+    GPIOC->AFR[1] |=  (2u   << ((BUZZER_PIN - 8) * 4)); // AF2 = TIM3
+
+    // ตั้งค่า Timer3 channel 4 เป็น PWM
+    TIM3->PSC  = 83;        // 1 MHz tick (84MHz / 84)
+    TIM3->ARR  = 1000;      // ค่าเริ่มต้น ~1kHz
+    TIM3->CCR4 = 0;         // duty 0% (เงียบ)
+
+    TIM3->CCMR2 &= ~(7u << 12);          // เคลียร์ OC4M
+    TIM3->CCMR2 |=  (6u << 12);          // PWM mode 1
+    TIM3->CCMR2 |=  TIM_CCMR2_OC4PE;     // preload enable
+
+    TIM3->CCER  |=  TIM_CCER_CC4E;       // เปิด channel 4 output
+    TIM3->CR1   |=  TIM_CR1_ARPE | TIM_CR1_CEN;
+}
+
+
+void Buzzer_Play(uint32_t freq_hz, uint8_t duty_percent) {
+    if (freq_hz == 0 || duty_percent == 0) { TIM3->CCR4 = 0; return; }
+    uint32_t arr = (1000000 / freq_hz) - 1;     // 1 MHz base
+    if (arr > 65535) arr = 65535;
+    TIM3->ARR  = arr;
+    TIM3->CCR4 = (arr + 1) * duty_percent / 100;
+}
+
+void Buzzer_Stop(void) {
+    TIM3->CCR4 = 0;
 }
