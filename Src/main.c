@@ -25,6 +25,7 @@ int main(void) {
     SysTick_Config(SystemCoreClock / 1000); // 1ms ticks
     NVIC_Init();
     ADC_Init();
+    Buzzer_Init();
 
     // Initialize OLED display
     oled_init();

@@ -28,4 +28,9 @@ void Monitor_ADC(void);
 void LED_SetPattern(uint8_t pattern);
 void SevenSeg_Display(uint8_t digit);
 
+// hardware.h
+void Buzzer_Init(void);
+void Buzzer_Play(uint32_t freq_hz, uint8_t duty_percent);
+void Buzzer_Stop(void);
+
 #endif /* HARDWARE_H */

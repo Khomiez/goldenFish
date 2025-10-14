@@ -76,6 +76,9 @@ static void handle_boot(void) {
     g_score = 0;
     g_lives = INITIAL_LIVES;
     set_game_state(GAME_STATE_DIFFICULTY_SELECT);
+    Buzzer_Play(800, 50);
+    Delay_ms(100);
+    Buzzer_Stop();
 }
 
 static void handle_difficulty_select(void) {
@@ -89,7 +92,7 @@ static void handle_difficulty_select(void) {
         SevenSeg_Display(g_difficulty);
 
         if (g_difficulty != last_difficulty || (current_time - last_log_time) > 1000) {
-            Log_Print("[DIFFICULTY] Pot:%u -> Diff:%u\r\n", pot_value, g_difficulty);
+            Log_Print("[CURRENT SPEED] Pot:%u -> Diff:%u\r\n", pot_value, g_difficulty);
             last_log_time = current_time;
             last_difficulty = g_difficulty;
             OLED_ShowStatus();
@@ -173,6 +176,9 @@ static void handle_input_wait(void) {
 
 static void handle_result_process(void) {
     if (g_input_correct) {
+        Buzzer_Play(1200, 40);
+        Delay_ms(80);
+        Buzzer_Stop();
         g_score += 10 * g_level * g_difficulty;
         g_level++;
         OLED_ShowStatus();
@@ -181,6 +187,9 @@ static void handle_result_process(void) {
         else
             set_game_state(GAME_STATE_LEVEL_INTRO);
     } else {
+        Buzzer_Play(300, 40);
+        Delay_ms(150);
+        Buzzer_Stop();
         if (g_lives > 0) g_lives--;
         OLED_ShowStatus();
         if (g_lives == 0)
@@ -195,6 +204,15 @@ static void handle_result_process(void) {
 static void handle_victory(void) {
     Log_Print("Congratulations! Final Score: %lu\r\n", g_score);
     OLED_ShowStatus();
+
+    // 🎵 เล่นทำนองชนะสั้นๆ
+    uint32_t melody[] = {523, 659, 784}; // C5, E5, G5
+    for (int i = 0; i < 3; i++) {
+        Buzzer_Play(melody[i], 40);   // ความดัง 40%
+        Delay_ms(150);                // โน้ตละ 150 ms
+        Buzzer_Stop();
+        Delay_ms(50);                 // เว้นจังหวะนิดหน่อย
+    }
 
     for (int i = 0; i < 4; i++) {
         if (g_buttons[i].current_state == 1 && g_buttons[i].previous_state == 0) {
