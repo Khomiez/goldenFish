@@ -89,7 +89,7 @@ static void handle_difficulty_select(void) {
         SevenSeg_Display(g_difficulty);
 
         if (g_difficulty != last_difficulty || (current_time - last_log_time) > 1000) {
-            Log_Print("[DIFFICULTY] Pot:%u -> Diff:%u\r\n", pot_value, g_difficulty);
+            Log_Print("[SPEED] Pot:%u -> Diff:%u\r\n", pot_value, g_difficulty);
             last_log_time = current_time;
             last_difficulty = g_difficulty;
             OLED_ShowStatus();

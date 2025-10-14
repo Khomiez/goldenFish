@@ -199,7 +199,7 @@ void OLED_ShowStatus(void) {
     oled_print_uint(6*6, 4, g_score);
 
     // DIFF
-    oled_print_text(0, 6, "DIFF");
+    oled_print_text(0, 6, "SPEED");
     oled_print_uint(6*6, 6, g_difficulty);
 
     // STATE
@@ -217,7 +217,7 @@ void OLED_ShowStatus(void) {
             oled_print_text(0, 7, "INPUT");
             break;
         case GAME_STATE_DIFFICULTY_SELECT:
-            oled_print_text(0, 7, "DIFF-SEL");
+            oled_print_text(0, 7, "SPEED-SELECT");
             break;
         default:
             oled_print_text(0, 7, "PLAY");
