@@ -1,4 +1,8 @@
+"./Src/game.o"
+"./Src/hardware.o"
 "./Src/main.o"
+"./Src/oled.o"
 "./Src/syscalls.o"
 "./Src/sysmem.o"
+"./Src/utils.o"
 "./Startup/startup_stm32f411retx.o"

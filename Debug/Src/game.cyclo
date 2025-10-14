@@ -1,0 +1,17 @@
+../Src/game.c:33:9:clamp_u8	2
+../Src/game.c:37:10:diff_on_ms	1
+../Src/game.c:43:10:diff_off_ms	1
+../Src/game.c:52:13:set_game_state	1
+../Src/game.c:57:13:generate_pattern	2
+../Src/game.c:63:13:show_led	1
+../Src/game.c:67:13:clear_leds	1
+../Src/game.c:74:13:handle_boot	1
+../Src/game.c:81:13:handle_difficulty_select	7
+../Src/game.c:111:13:handle_level_intro	4
+../Src/game.c:137:13:handle_pattern_display	2
+../Src/game.c:155:13:handle_input_wait	6
+../Src/game.c:174:13:handle_result_process	5
+../Src/game.c:195:13:handle_victory	4
+../Src/game.c:211:13:handle_game_death	8
+../Src/game.c:258:6:Game_Init	1
+../Src/game.c:266:6:Game_Run	18

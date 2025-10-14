@@ -1,0 +1,4 @@
+../Src/utils.c:19:6:Delay_ms	2
+../Src/utils.c:24:10:GetTick	1
+../Src/utils.c:31:6:Log_Print	4
+../Src/utils.c:47:6:SysTick_Handler	1
