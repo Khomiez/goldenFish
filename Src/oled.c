@@ -447,8 +447,9 @@ void oled_init(void) {
 // Section1: rows/pages used
 #define S1_COL_L 0
 #define S1_COL_R COL_SPLIT
-#define S1_PAGE_LABEL 0 // "LEVEL", hearts same page
-#define S1_PAGE_SPEED 2 // "SPD" + number + bar
+#define S1_PAGE_HEARTS 0 // hearts on first row
+#define S1_PAGE_SPEED 2  // "SPD" + number
+#define S1_PAGE_LEVEL 4  // "LEVEL" + number
 
 // Section2
 #define S2_COL_L COL_SPLIT
@@ -459,51 +460,32 @@ void oled_init(void) {
 // Footer
 #define FOOTER_PAGE 7
 
-// Speed bar width (inside section1)
-#define W_SPD_BAR 54
-
 /* ----------------------------- Rendering ---------------------------------- */
 static void draw_section1(void) {
   // Clear region pages we use
-  oled_clear_region(S1_PAGE_LABEL, S1_COL_L, S1_COL_R);
+  oled_clear_region(S1_PAGE_HEARTS, S1_COL_L, S1_COL_R);
   oled_clear_region(S1_PAGE_SPEED, S1_COL_L, S1_COL_R);
-  oled_clear_region((uint8_t)(S1_PAGE_SPEED + 1), S1_COL_L, S1_COL_R); // safety
+  oled_clear_region(S1_PAGE_LEVEL, S1_COL_L, S1_COL_R);
 
-  // LEVEL label + number (left)
-  oled_print_text(S1_COL_L + 0, S1_PAGE_LABEL, "LEVEL");
-  oled_print_uint((uint8_t)(S1_COL_L + 6 * 6), S1_PAGE_LABEL, g_level);
-
-  // LIVES (hearts) right-aligned within section1
+  // Row 1: LIVES (hearts) - left-aligned
   {
-    // each heart drawn with 8 columns + 1 spacing
-    uint8_t total_w = (uint8_t)(INITIAL_LIVES * 9);
-    uint8_t start_x =
-        (uint8_t)((S1_COL_R - S1_COL_L > total_w) ? (S1_COL_R - total_w - 2)
-                                                  : (S1_COL_L + 2));
+    uint8_t x = S1_COL_L;
     for (uint8_t i = 0; i < INITIAL_LIVES; i++) {
-      uint8_t x = (uint8_t)(start_x + i * 9);
       if (i < g_lives)
-        oled_draw_icon8_hflip(x, S1_PAGE_LABEL, ICON_HEART_ROT90);
+        oled_draw_icon8_hflip(x, S1_PAGE_HEARTS, ICON_HEART_ROT90);
       else
-        oled_draw_icon8_hflip(x, S1_PAGE_LABEL, ICON_HEART_EMPTY_ROT90);
+        oled_draw_icon8_hflip(x, S1_PAGE_HEARTS, ICON_HEART_EMPTY_ROT90);
+      x = (uint8_t)(x + 9); // 8 cols for heart + 1 spacing
     }
   }
 
-  // SPEED line
+  // Row 2: SPEED label + number
   oled_print_text(S1_COL_L + 0, S1_PAGE_SPEED, "SPD");
-  // numeric value
   oled_print_uint((uint8_t)(S1_COL_L + 6 * 4), S1_PAGE_SPEED, g_difficulty);
 
-  // draw speed bar within section1 width
-  {
-    uint8_t bar_x = (uint8_t)(S1_COL_R - W_SPD_BAR - 2);
-    if (bar_x < (S1_COL_L + 6 * 8))
-      bar_x = (uint8_t)(S1_COL_L + 6 * 8); // keep some gap from number
-    uint8_t spd = g_difficulty;
-    if (spd > 5)
-      spd = 5;
-    oled_draw_bordered_progress(bar_x, S1_PAGE_SPEED, W_SPD_BAR, spd, 5);
-  }
+  // Row 3: LEVEL label + number
+  oled_print_text(S1_COL_L + 0, S1_PAGE_LEVEL, "LEVEL");
+  oled_print_uint((uint8_t)(S1_COL_L + 6 * 6), S1_PAGE_LEVEL, g_level);
 }
 
 static void draw_section2(void) {
