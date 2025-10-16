@@ -68,6 +68,11 @@ uint16_t diff_off_ms(uint8_t diff) {
 /* ============================================================================
  * Internal Helper Functions
  * ============================================================================ */
+static void leds_clear(void) {
+    LED_SetPattern(0);
+    Buzzer_Stop();
+}
+
 static void set_game_state(GameState_t new_state) {
     leds_clear();
     g_game_state = new_state;
@@ -84,11 +89,6 @@ static void leds_show(uint8_t idx) {
     uint8_t led = button_to_led_map[idx];
     LED_SetPattern(1 << led);
     Buzzer_Play(tone_by_led[led], 40);
-}
-
-static void leds_clear(void) {
-    LED_SetPattern(0);
-    Buzzer_Stop();
 }
 
 
