@@ -33,34 +33,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := New folder
+BUILD_ARTIFACT_NAME := projectmaicro
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-New\ folder.elf \
+projectmaicro.elf \
 
 MAP_FILES += \
-New\ folder.map \
+projectmaicro.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-New\ folder.list \
+projectmaicro.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: New\ folder.elf secondary-outputs
+main-build: projectmaicro.elf secondary-outputs
 
 # Tool invocations
-New\ folder.elf New\ folder.map: $(OBJS) $(USER_OBJS) C:\Users\KKU11\Desktop\New\ folder\STM32F411RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "New folder.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\KKU11\Desktop\New folder\STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="New folder.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+projectmaicro.elf projectmaicro.map: $(OBJS) $(USER_OBJS) C:\Users\KKU11\Desktop\New\ folder\STM32F411RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "projectmaicro.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\KKU11\Desktop\New folder\STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="projectmaicro.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -69,14 +69,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-New\ folder.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "New folder.list"
+projectmaicro.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "projectmaicro.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) New\ folder.elf New\ folder.list New\ folder.map New\\ folder.elf default.size.stdout
+	-$(RM) default.size.stdout projectmaicro.elf projectmaicro.list projectmaicro.map
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)

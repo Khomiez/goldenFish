@@ -14,8 +14,8 @@
 /* Global Variables */
 uint32_t SystemCoreClock = 84000000;
 ButtonState_t g_buttons[4];
-volatile uint16_t g_adc_values[3] = {0};
-volatile uint8_t  g_current_adc_channel = 0;
+uint16_t g_adc_values[3] = {0};
+uint8_t g_current_adc_channel = 0;
 
 /* ============================================================================
  * System Initialization
@@ -41,40 +41,29 @@ void SystemClock_Config(void) {
 }
 
 void GPIO_Init(void) {
-    // --- Init button state memory (สำหรับ debounce แบบใหม่) ---
-    for (int i = 0; i < 4; i++) {
-        g_buttons[i].previous_state   = 0;
-        g_buttons[i].current_state    = 0;
-        g_buttons[i].stable_reading   = 0;   // ต้องมีฟิลด์นี้ใน struct
-        g_buttons[i].last_change_time = 0;
-    }
-
-    // --- Enable GPIO clocks ---
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOCEN;
 
-    // --- LEDs as outputs ---
+    // LEDs as outputs
     GPIOA->MODER |= (1 << (LED1_PIN*2)) | (1 << (LED2_PIN*2)) | (1 << (LED3_PIN*2));
     GPIOB->MODER |= (1 << (LED4_PIN*2));
 
-    // --- Buttons as inputs with pull-ups (active-low) ---
-    // (ขา input เป็นค่า default อยู่แล้ว จึงตั้งแค่ PUPDR ก็พอ)
+    // Buttons with pull-ups
     GPIOA->PUPDR |= (1 << (BTN0_PIN*2));
     GPIOB->PUPDR |= (1 << (BTN1_PIN*2)) | (1 << (BTN2_PIN*2)) | (1 << (BTN3_PIN*2));
 
-    // --- ADC pins as analog ---
+    // ADC pins as analog
     GPIOA->MODER |= (3 << (POT_PIN*2)) | (3 << (TEMP_PIN*2)) | (3 << (LIGHT_PIN*2));
 
-    // --- UART2: PA2, PA3 as AF7 ---
+    // UART2: PA2, PA3 as AF7
     GPIOA->MODER |= (2 << (2*2)) | (2 << (3*2));
     GPIOA->AFR[0] |= (7 << (2*4)) | (7 << (3*4));
 
-    // --- 7-Segment BCD outputs ---
+    // 7-Segment BCD outputs
     GPIOC->MODER = (GPIOC->MODER & ~(3U << (BCD_2_0_PIN*2))) | (1U << (BCD_2_0_PIN*2));
     GPIOA->MODER = (GPIOA->MODER & ~((3U << (BCD_2_1_PIN*2)) | (3U << (BCD_2_3_PIN*2)))) |
                    (1U << (BCD_2_1_PIN*2)) | (1U << (BCD_2_3_PIN*2));
     GPIOB->MODER = (GPIOB->MODER & ~(3U << (BCD_2_2_PIN*2))) | (1U << (BCD_2_2_PIN*2));
 }
-
 
 void ADC_Init(void) {
     RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
@@ -108,29 +97,24 @@ void ADC_StartConversion(void) {
  * Hardware Monitoring
  * ============================================================================ */
 void Monitor_Buttons(void) {
-    uint32_t now = GetTick();
-    uint8_t raw[4] = {
+    uint32_t current_time = GetTick();
+    uint8_t readings[4] = {
         !(BTN0_PORT->IDR & (1 << BTN0_PIN)),
         !(BTN1_PORT->IDR & (1 << BTN1_PIN)),
         !(BTN2_PORT->IDR & (1 << BTN2_PIN)),
         !(BTN3_PORT->IDR & (1 << BTN3_PIN))
     };
 
-    for (int i = 0; i < 4; i++) {
-        // ใช้ previous_state/current_state เดิม แต่ต้องนิ่งครบเวลา
-        if (raw[i] != g_buttons[i].stable_reading) {
-            // มีการเปลี่ยน -> เริ่มจับเวลา
-            if ((now - g_buttons[i].last_change_time) >= BUTTON_DEBOUNCE_MS) {
-                g_buttons[i].stable_reading = raw[i];
-                g_buttons[i].previous_state = g_buttons[i].current_state;
-                g_buttons[i].current_state  = raw[i];
-                g_buttons[i].last_change_time = now;
+    for(int i = 0; i < 4; i++) {
+        g_buttons[i].previous_state = g_buttons[i].current_state;
+        g_buttons[i].current_state = readings[i];
+        if(g_buttons[i].current_state != g_buttons[i].previous_state) {
+            if((current_time - g_buttons[i].last_change_time) >= BUTTON_DEBOUNCE_MS) {
+                g_buttons[i].last_change_time = current_time;
             }
         }
-        // Don't reset last_change_time when stable - needed for long press detection
     }
 }
-
 
 void Monitor_ADC(void) {
     /* ADC handled via interrupt */

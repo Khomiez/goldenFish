@@ -5,31 +5,19 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../Src/game.c \
-../Src/hardware.c \
 ../Src/main.c \
-../Src/oled.c \
 ../Src/syscalls.c \
-../Src/sysmem.c \
-../Src/utils.c 
+../Src/sysmem.c 
 
 OBJS += \
-./Src/game.o \
-./Src/hardware.o \
 ./Src/main.o \
-./Src/oled.o \
 ./Src/syscalls.o \
-./Src/sysmem.o \
-./Src/utils.o 
+./Src/sysmem.o 
 
 C_DEPS += \
-./Src/game.d \
-./Src/hardware.d \
 ./Src/main.d \
-./Src/oled.d \
 ./Src/syscalls.d \
-./Src/sysmem.d \
-./Src/utils.d 
+./Src/sysmem.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -39,7 +27,7 @@ Src/%.o Src/%.su Src/%.cyclo: ../Src/%.c Src/subdir.mk
 clean: clean-Src
 
 clean-Src:
-	-$(RM) ./Src/game.cyclo ./Src/game.d ./Src/game.o ./Src/game.su ./Src/hardware.cyclo ./Src/hardware.d ./Src/hardware.o ./Src/hardware.su ./Src/main.cyclo ./Src/main.d ./Src/main.o ./Src/main.su ./Src/oled.cyclo ./Src/oled.d ./Src/oled.o ./Src/oled.su ./Src/syscalls.cyclo ./Src/syscalls.d ./Src/syscalls.o ./Src/syscalls.su ./Src/sysmem.cyclo ./Src/sysmem.d ./Src/sysmem.o ./Src/sysmem.su ./Src/utils.cyclo ./Src/utils.d ./Src/utils.o ./Src/utils.su
+	-$(RM) ./Src/main.cyclo ./Src/main.d ./Src/main.o ./Src/main.su ./Src/syscalls.cyclo ./Src/syscalls.d ./Src/syscalls.o ./Src/syscalls.su ./Src/sysmem.cyclo ./Src/sysmem.d ./Src/sysmem.o ./Src/sysmem.su
 
 .PHONY: clean-Src
 
