@@ -1,6 +1,6 @@
 /* ============================================================================
  * OLED Display Driver Implementation
- * SH1106/SSD1306 over I2C1
+ * SF1106/SSD1306 over I2C1
  * Layout: [section1 left]|[section2 right]
  * Footer centered at bottom
  * ============================================================================

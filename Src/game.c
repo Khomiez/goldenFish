@@ -154,6 +154,7 @@ static void handle_difficulty_select(void) {
 
 static void handle_level_intro(void) {
     Log_Print("Level %u. Lives: %u. Score: %lu\r\n", g_level, g_lives, g_score);
+    Debug_PrintGameState();
     OLED_ShowStatus();
     Delay_ms(800);
 
@@ -180,15 +181,30 @@ static void handle_level_intro(void) {
 }
 
 static void handle_pattern_display(void) {
+    static uint8_t pattern_logged = 0;
     uint32_t now = GetTick();
     uint16_t t_on  = diff_on_ms(g_difficulty);
     uint16_t t_off = diff_off_ms(g_difficulty);
+
+    // Log pattern once when starting display
+    if (!pattern_logged) {
+        Log_Print("[PATTERN] Displaying pattern: ");
+        for (uint8_t i = 0; i < g_pattern_length; i++) {
+            const char* led_names[4] = {"BLUE", "RED", "YELLOW", "GREEN"};
+            Log_Print("%s", led_names[g_pattern[i]]);
+            if (i < g_pattern_length - 1) Log_Print(", ");
+        }
+        Log_Print("\r\n");
+        pattern_logged = 1;
+    }
 
     if (g_pattern_index >= g_pattern_length) {
         // จบ pattern → ไป input
         g_pattern_index = 0;
         g_input_index = 0;
         g_input_correct = 1;
+        pattern_logged = 0; // reset for next level
+        Log_Print("[PATTERN] Display complete. Waiting for input...\r\n");
         set_game_state(GAME_STATE_INPUT_WAIT);
         return;
     }
@@ -211,6 +227,10 @@ static void handle_input_wait(void) {
     if (g_input_index < g_pattern_length) {
         for (int i = 0; i < 4; i++) {
             if (g_buttons[i].current_state == 1 && g_buttons[i].previous_state == 0) {
+                const char* btn_names[4] = {"BLUE", "RED", "YELLOW", "GREEN"};
+                Log_Print("[INPUT] Button %s pressed. Index: %u, Expected: %u, Correct: %s\r\n",
+                          btn_names[i], g_input_index, g_pattern[g_input_index],
+                          (i == g_pattern[g_input_index]) ? "YES" : "NO");
                 leds_show(i);
                 Delay_ms(diff_on_ms(g_difficulty) / 2);
                 leds_clear();
@@ -228,21 +248,27 @@ static void handle_input_wait(void) {
 
 static void handle_result_process(void) {
     if (g_input_correct) {
+        Log_Print("[RESULT] SUCCESS! Level %u completed.\r\n", g_level);
         Buzzer_Play(1200, 40);
         Delay_ms(80);
         Buzzer_Stop();
         g_score += 10 * g_level * g_difficulty;
         g_level++;
+        Log_Print("[RESULT] Score: %lu, Next Level: %u\r\n", g_score, g_level);
+        Debug_PrintGameState();
         OLED_ShowStatus();
         if (g_level > 9)
             set_game_state(GAME_STATE_VICTORY);
         else
             set_game_state(GAME_STATE_LEVEL_INTRO);
     } else {
+        Log_Print("[RESULT] FAIL! Lost a life.\r\n");
         Buzzer_Play(300, 40);
         Delay_ms(150);
         Buzzer_Stop();
         if (g_lives > 0) g_lives--;
+        Log_Print("[RESULT] Lives remaining: %u\r\n", g_lives);
+        Debug_PrintGameState();
         OLED_ShowStatus();
         if (g_lives == 0)
             set_game_state(GAME_STATE_GAME_DEATH);
@@ -259,6 +285,7 @@ static void handle_victory(void) {
     OLED_ShowStatus();
 
     if (!played) {                      // <— เล่นครั้งเดียว
+        Debug_PrintGameState();
         uint32_t melody[] = {523, 659, 784}; // C5, E5, G5
         for (int i = 0; i < 3; i++) {
             Buzzer_Play(melody[i], 40);
@@ -289,6 +316,7 @@ static void handle_game_death(void) {
     // Play game over animation once upon entering this state
     if (!animation_played) {
         Log_Print("Game Over! Final Score: %lu\r\n", g_score);
+        Debug_PrintGameState();
 
         // Rapid blink: 3 cycles
         for (int cycle = 0; cycle < 3; cycle++) {
