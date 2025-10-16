@@ -125,15 +125,22 @@ static void handle_difficulty_select(void) {
     uint32_t current_time = GetTick();
     static uint32_t last_log_time = 0;
     static uint8_t last = 0;
+    static uint16_t last_pot = 0;
 
     if (!g_difficulty_locked) {
         uint16_t pot_value = g_adc_values[0];
         g_difficulty = map_pot_to_speed(pot_value);
         SevenSeg_Display(g_difficulty);
 
-        if (g_difficulty != last || (current_time - last_log_time) > 200) {
+        // Log when difficulty changes OR pot value changes significantly OR periodic update
+        uint16_t pot_diff = (pot_value > last_pot) ? (pot_value - last_pot) : (last_pot - pot_value);
+        if (g_difficulty != last || pot_diff > 10 || (current_time - last_log_time) > 500) {
             last_log_time = current_time;
+            if (g_difficulty != last || pot_diff > 10) {
+                Log_Print("[POT] Value: %u/1023 -> Speed Difficulty: %u\r\n", pot_value, g_difficulty);
+            }
             last = g_difficulty;
+            last_pot = pot_value;
             OLED_ShowStatus(); // อัปเดตจอน้อยลง
         }
 
@@ -142,7 +149,7 @@ static void handle_difficulty_select(void) {
             if (g_buttons[i].current_state == 1 &&
                (current_time - g_buttons[i].last_change_time) >= LONG_PRESS_DURATION_MS) {
                 g_difficulty_locked = 1;
-                Log_Print("[DIFFICULTY] Locked at level %u. Press any button to start.\r\n", g_difficulty);
+                Log_Print("[SPEED] Difficulty locked at level %u. Press any button to start.\r\n", g_difficulty);
                 Buzzer_Play(1000, 40);
                 Delay_ms(100);
                 Buzzer_Stop();
@@ -162,7 +169,7 @@ static void handle_difficulty_select(void) {
 
         for (int i = 0; i < 4; i++) {
             if (g_buttons[i].current_state == 1 && g_buttons[i].previous_state == 0) {
-                Log_Print("[GAME] Starting game with difficulty %u\r\n", g_difficulty);
+                Log_Print("[GAME] Starting game with Speed Difficulty %u\r\n", g_difficulty);
                 set_game_state(GAME_STATE_LEVEL_INTRO);
                 return;
             }
