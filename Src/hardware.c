@@ -126,10 +126,8 @@ void Monitor_Buttons(void) {
                 g_buttons[i].current_state  = raw[i];
                 g_buttons[i].last_change_time = now;
             }
-        } else {
-            // ไม่มีการเปลี่ยน, อัปเดต time check เพื่อพร้อมใช้ครั้งหน้า
-            g_buttons[i].last_change_time = now;
         }
+        // Don't reset last_change_time when stable - needed for long press detection
     }
 }
 

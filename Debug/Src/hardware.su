@@ -7,10 +7,10 @@ C:/Users/KKU11/Downloads/Library/CMSIS/Core/Include/core_cm4.h:1924:22:__NVIC_Se
 ../Src/hardware.c:96:6:NVIC_Init	8	static
 ../Src/hardware.c:102:6:ADC_StartConversion	4	static
 ../Src/hardware.c:110:6:Monitor_Buttons	24	static
-../Src/hardware.c:137:6:Monitor_ADC	4	static
-../Src/hardware.c:144:6:LED_SetPattern	16	static
-../Src/hardware.c:155:6:SevenSeg_Display	16	static
-../Src/hardware.c:170:6:ADC_IRQHandler	4	static
-../Src/hardware.c:181:6:Buzzer_Init	4	static
-../Src/hardware.c:205:6:Buzzer_Play	24	static
-../Src/hardware.c:213:6:Buzzer_Stop	4	static
+../Src/hardware.c:135:6:Monitor_ADC	4	static
+../Src/hardware.c:142:6:LED_SetPattern	16	static
+../Src/hardware.c:153:6:SevenSeg_Display	16	static
+../Src/hardware.c:168:6:ADC_IRQHandler	4	static
+../Src/hardware.c:179:6:Buzzer_Init	4	static
+../Src/hardware.c:203:6:Buzzer_Play	24	static
+../Src/hardware.c:211:6:Buzzer_Stop	4	static

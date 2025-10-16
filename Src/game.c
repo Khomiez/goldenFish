@@ -137,17 +137,36 @@ static void handle_difficulty_select(void) {
             OLED_ShowStatus(); // อัปเดตจอน้อยลง
         }
 
-        // long-press -> lock เหมือนเดิม...
+        // long-press -> lock difficulty only
         for (int i = 0; i < 4; i++) {
             if (g_buttons[i].current_state == 1 &&
                (current_time - g_buttons[i].last_change_time) >= LONG_PRESS_DURATION_MS) {
                 g_difficulty_locked = 1;
-                set_game_state(GAME_STATE_LEVEL_INTRO);
+                Log_Print("[DIFFICULTY] Locked at level %u. Press any button to start.\r\n", g_difficulty);
+                Buzzer_Play(1000, 40);
+                Delay_ms(100);
+                Buzzer_Stop();
+                OLED_ShowStatus();
+
+                // Wait for button release
+                while (g_buttons[i].current_state == 1) {
+                    Monitor_Buttons();
+                    Delay_ms(10);
+                }
                 return;
             }
         }
     } else {
+        // Difficulty is locked, wait for short press to start game
         SevenSeg_Display(g_difficulty);
+
+        for (int i = 0; i < 4; i++) {
+            if (g_buttons[i].current_state == 1 && g_buttons[i].previous_state == 0) {
+                Log_Print("[GAME] Starting game with difficulty %u\r\n", g_difficulty);
+                set_game_state(GAME_STATE_LEVEL_INTRO);
+                return;
+            }
+        }
     }
 }
 
@@ -234,6 +253,13 @@ static void handle_input_wait(void) {
                 leds_show(i);
                 Delay_ms(diff_on_ms(g_difficulty) / 2);
                 leds_clear();
+
+                // Wait for button release to prevent multiple counts
+                while (g_buttons[i].current_state == 1) {
+                    Monitor_Buttons();
+                    Delay_ms(10);
+                }
+
                 if (i != g_pattern[g_input_index]) {
                     g_input_correct = 0;
                 }

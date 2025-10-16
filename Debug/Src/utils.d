@@ -1,4 +1,5 @@
-Src/utils.o: ../Src/utils.c ../Inc/utils.h \
+Src/utils.o: ../Src/utils.c ../Inc/utils.h ../Inc/game.h ../Inc/config.h \
+ ../Inc/hardware.h \
  C:/Users/KKU11/Downloads/Library/CMSIS-DEVICE-F4/Include/stm32f4xx.h \
  C:/Users/KKU11/Downloads/Library/CMSIS-DEVICE-F4/Include/stm32f411xe.h \
  C:/Users/KKU11/Downloads/Library/CMSIS/Core/Include/core_cm4.h \
@@ -8,6 +9,9 @@ Src/utils.o: ../Src/utils.c ../Inc/utils.h \
  C:/Users/KKU11/Downloads/Library/CMSIS/Core/Include/m-profile/armv7m_mpu.h \
  C:/Users/KKU11/Downloads/Library/CMSIS-DEVICE-F4/Include/system_stm32f4xx.h
 ../Inc/utils.h:
+../Inc/game.h:
+../Inc/config.h:
+../Inc/hardware.h:
 C:/Users/KKU11/Downloads/Library/CMSIS-DEVICE-F4/Include/stm32f4xx.h:
 C:/Users/KKU11/Downloads/Library/CMSIS-DEVICE-F4/Include/stm32f411xe.h:
 C:/Users/KKU11/Downloads/Library/CMSIS/Core/Include/core_cm4.h:
