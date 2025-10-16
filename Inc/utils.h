@@ -16,6 +16,5 @@ extern uint8_t g_system_initialized;
 void Delay_ms(uint32_t ms);
 uint32_t GetTick(void);
 void Log_Print(const char* format, ...);
-void Debug_PrintGameState(void);
 
 #endif /* UTILS_H */
