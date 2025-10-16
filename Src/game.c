@@ -113,7 +113,9 @@ static uint8_t map_pot_to_speed(uint16_t v10bit) {
     pot_avg = (pot_avg * 7 + v10bit) / 8;
 
     // map 0..1023 -> 1..5
-    uint8_t s = (uint32_t)(pot_avg * 5) / 1024 + 1;
+    // Each range: 0-204=1, 205-409=2, 410-614=3, 615-819=4, 820-1023=5
+    uint8_t s = 1 + (uint32_t)(pot_avg * 5) / 1024;
+    if (s > 5) s = 5;  // Clamp to max difficulty 5
 
     // hysteresis: ถ้าต่างจาก g_difficulty น้อย ให้รอก่อน
     if (s > g_difficulty && (pot_avg % 205) < 20) return g_difficulty; // ขยับขึ้นเมื่อผ่านช่วง
@@ -137,7 +139,8 @@ static void handle_difficulty_select(void) {
         if (g_difficulty != last || pot_diff > 10 || (current_time - last_log_time) > 500) {
             last_log_time = current_time;
             if (g_difficulty != last || pot_diff > 10) {
-                Log_Print("[POT] Value: %u/1023 -> Speed Difficulty: %u\r\n", pot_value, g_difficulty);
+                Log_Print("[POT] Raw: %u/1023 (Smoothed: %u) -> Speed Difficulty: %u\r\n",
+                         pot_value, pot_avg, g_difficulty);
             }
             last = g_difficulty;
             last_pot = pot_value;
